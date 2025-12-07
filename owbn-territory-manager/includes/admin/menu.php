@@ -4,7 +4,7 @@
  * Text Domain: owbn-territory-manager
  * Version: 0.9.0
  * @author greghacke
- * Function: Register admin menus and page callbacks
+ * Function: Register admin menus
  */
 
 defined('ABSPATH') || exit;
@@ -19,29 +19,9 @@ function owbn_tm_register_admin_menu()
         __('OWBN Territory', 'owbn-territory-manager'),
         'manage_options',
         'owbn-territory',
-        'owbn_tm_render_territories_page',
+        null,
         'dashicons-location',
         30
-    );
-
-    // All Territories (same as parent)
-    add_submenu_page(
-        'owbn-territory',
-        __('All Territories', 'owbn-territory-manager'),
-        __('All Territories', 'owbn-territory-manager'),
-        'manage_options',
-        'owbn-territory',
-        'owbn_tm_render_territories_page'
-    );
-
-    // Add Territory
-    add_submenu_page(
-        'owbn-territory',
-        __('Add Territory', 'owbn-territory-manager'),
-        __('Add Territory', 'owbn-territory-manager'),
-        'manage_options',
-        'owbn-territory-add',
-        'owbn_tm_render_add_territory_page'
     );
 
     // Settings
@@ -53,20 +33,14 @@ function owbn_tm_register_admin_menu()
         'owbn-territory-settings',
         'owbn_tm_render_settings_page'
     );
-}
 
-function owbn_tm_render_territories_page()
-{
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html__('All Territories', 'owbn-territory-manager') . '</h1>';
-    // TODO: Territory list table
-    echo '</div>';
-}
-
-function owbn_tm_render_add_territory_page()
-{
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html__('Add Territory', 'owbn-territory-manager') . '</h1>';
-    // TODO: Add territory form
-    echo '</div>';
+    // Import tool
+    add_submenu_page(
+        'owbn-territory',
+        __('Import', 'owbn-territory-manager'),
+        __('Import', 'owbn-territory-manager'),
+        'manage_options',
+        'owbn-territory-import',
+        'owbn_tm_render_import_page'
+    );
 }

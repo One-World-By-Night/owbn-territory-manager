@@ -2,9 +2,14 @@
 
 /** File: core/init.php
  * Text Domain: owbn-territory-manager
- * version 0.9.0
+ * Version: 0.9.0
  * @author greghacke
- * Function: 
+ * Function: Load core components
  */
 
 defined('ABSPATH') || exit;
+
+require_once __DIR__ . '/post-type.php';
+require_once __DIR__ . '/activation.php';
+require_once __DIR__ . '/cache.php';
+require_once __DIR__ . '/logging.php';

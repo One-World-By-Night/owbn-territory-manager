@@ -14,7 +14,7 @@ require_once __DIR__ . '/core/init.php';
 require_once __DIR__ . '/classes/init.php';
 require_once __DIR__ . '/helper/init.php';
 require_once __DIR__ . '/admin/init.php';
-require_once __DIR__ . '/hooks/init.php';
+require_once __DIR__ . '/webhooks/init.php';
 require_once __DIR__ . '/render/init.php';
 require_once __DIR__ . '/shortcodes/init.php';
 require_once __DIR__ . '/templates/init.php';
