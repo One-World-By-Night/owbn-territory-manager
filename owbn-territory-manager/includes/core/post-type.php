@@ -37,7 +37,7 @@ function owbn_tm_register_post_type()
         'show_in_rest'        => true,
         'rest_base'           => 'territories',
         'capability_type'     => 'post',
-        'has_archive'         => true,
+        'has_archive'         => false,
         'hierarchical'        => false,
         'rewrite'             => ['slug' => 'territory', 'with_front' => false],
         'supports'            => ['title', 'editor', 'revisions'],
