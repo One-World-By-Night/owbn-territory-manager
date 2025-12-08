@@ -2,7 +2,7 @@
 
 /** File: tools/get-cc-data.php
  * Text Domain: owbn-territory-manager
- * Version: 0.9.0
+ * Version: 1.0.0
  * @author greghacke
  * Function: Fetch chronicle/coordinator data from local or remote API
  */
@@ -289,7 +289,7 @@ function owbn_tm_get_all_slugs(): array
             $slug = $c['slug'] ?? '';
             $name = $c['title'] ?? $c['name'] ?? $slug;
             if ($slug) {
-                $slugs[$slug] = $name . ' (Chronicle)';
+                $slugs[$slug] = $slug . ' – ' . $name . ' (Chronicle)';
             }
         }
     }
@@ -300,7 +300,7 @@ function owbn_tm_get_all_slugs(): array
             $slug = $c['slug'] ?? '';
             $name = $c['title'] ?? $c['name'] ?? $slug;
             if ($slug) {
-                $slugs[$slug] = $name . ' (Coordinator)';
+                $slugs[$slug] = $slug . ' – ' . $name . ' (Coordinator)';
             }
         }
     }

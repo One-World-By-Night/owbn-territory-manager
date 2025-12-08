@@ -2,7 +2,7 @@
 
 /** File: admin/settings.php
  * Text Domain: owbn-territory-manager
- * Version: 0.9.0
+ * Version: 0.9.1
  * @author greghacke
  * Function: Settings page and options registration
  */
@@ -71,7 +71,7 @@ function owbn_tm_render_settings_page()
         return;
     }
 
-    // Current values
+    // Current values - Data Sources
     $chron_enabled = get_option('owbn_tm_enable_chronicles', false);
     $chron_mode    = get_option('owbn_tm_chronicles_mode', 'local');
     $chron_url     = get_option('owbn_tm_chronicles_url', '');
@@ -84,6 +84,11 @@ function owbn_tm_render_settings_page()
 
     $cache_ttl = get_option('owbn_tm_cache_ttl', 3600);
 
+    // Current values - API
+    $api_enabled   = get_option('owbn_tm_api_enabled', false);
+    $api_local_only = get_option('owbn_tm_local_only', false);
+    $api_key       = get_option('owbn_tm_api_key', '');
+
     // Handle manual cache refresh
     if (isset($_POST['owbn_tm_refresh_cache']) && check_admin_referer('owbn_tm_refresh_cache')) {
         $result = owbn_tm_refresh_cc_cache();
@@ -94,16 +99,41 @@ function owbn_tm_render_settings_page()
         }
     }
 
+    // Handle API settings save
+    if (
+        isset($_POST['owbn_tm_api_nonce']) &&
+        wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['owbn_tm_api_nonce'])), 'save_owbn_tm_api')
+    ) {
+        $new_api_enabled = isset($_POST['owbn_tm_api_enabled']) && $_POST['owbn_tm_api_enabled'] === '1';
+        $new_local_only  = isset($_POST['owbn_tm_local_only']) && $_POST['owbn_tm_local_only'] === '1';
+        $new_api_key     = sanitize_text_field(wp_unslash($_POST['owbn_tm_api_key'] ?? ''));
+
+        update_option('owbn_tm_api_enabled', $new_api_enabled);
+        update_option('owbn_tm_local_only', $new_local_only);
+        update_option('owbn_tm_api_key', $new_api_key);
+
+        // Refresh local vars
+        $api_enabled    = $new_api_enabled;
+        $api_local_only = $new_local_only;
+        $api_key        = $new_api_key;
+
+        add_settings_error('owbn_tm_messages', 'api_success', __('API settings saved.', 'owbn-territory-manager'), 'updated');
+    }
+
 ?>
     <div class="wrap">
         <h1><?php esc_html_e('Territory Settings', 'owbn-territory-manager'); ?></h1>
         <?php settings_errors('owbn_tm_messages'); ?>
 
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- DATA SOURCE SETTINGS -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+
         <form method="post" action="options.php">
             <?php settings_fields('owbn_tm_settings'); ?>
 
             <!-- Chronicles -->
-            <h2><?php esc_html_e('Chronicles', 'owbn-territory-manager'); ?></h2>
+            <h2><?php esc_html_e('Chronicles Data Source', 'owbn-territory-manager'); ?></h2>
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row"><?php esc_html_e('Enable', 'owbn-territory-manager'); ?></th>
@@ -166,7 +196,7 @@ function owbn_tm_render_settings_page()
             <hr />
 
             <!-- Coordinators -->
-            <h2><?php esc_html_e('Coordinators', 'owbn-territory-manager'); ?></h2>
+            <h2><?php esc_html_e('Coordinators Data Source', 'owbn-territory-manager'); ?></h2>
             <table class="form-table" role="presentation">
                 <tr>
                     <th scope="row"><?php esc_html_e('Enable', 'owbn-territory-manager'); ?></th>
@@ -247,12 +277,93 @@ function owbn_tm_render_settings_page()
 
         <hr />
 
-        <h2><?php esc_html_e('CC Data Cache', 'owbn-territory-manager'); ?></h2>
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- TERRITORY API SETTINGS -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+        <h2><?php esc_html_e('Territory API', 'owbn-territory-manager'); ?></h2>
+        <p class="description"><?php esc_html_e('Allow external sites to fetch territory data from this installation.', 'owbn-territory-manager'); ?></p>
+
+        <form method="post">
+            <?php wp_nonce_field('save_owbn_tm_api', 'owbn_tm_api_nonce'); ?>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><?php esc_html_e('Enable API', 'owbn-territory-manager'); ?></th>
+                    <td>
+                        <label>
+                            <input type="hidden" name="owbn_tm_api_enabled" value="0" />
+                            <input type="checkbox"
+                                name="owbn_tm_api_enabled"
+                                id="owbn_tm_api_enabled"
+                                value="1"
+                                <?php checked($api_enabled); ?> />
+                            <?php esc_html_e('Enable Territory REST API', 'owbn-territory-manager'); ?>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Local Only Mode', 'owbn-territory-manager'); ?></th>
+                    <td>
+                        <label>
+                            <input type="hidden" name="owbn_tm_local_only" value="0" />
+                            <input type="checkbox"
+                                name="owbn_tm_local_only"
+                                id="owbn_tm_local_only"
+                                value="1"
+                                <?php checked($api_local_only); ?> />
+                            <?php esc_html_e('Disable external API access (local use only)', 'owbn-territory-manager'); ?>
+                        </label>
+                        <p class="description"><?php esc_html_e('When enabled, API requests from external sites are rejected.', 'owbn-territory-manager'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('API URL', 'owbn-territory-manager'); ?></th>
+                    <td>
+                        <code id="owbn_tm_api_url"><?php echo esc_url(rest_url('owbn-tm/v1/')); ?></code>
+                        <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('owbn_tm_api_url').textContent)">
+                            <?php esc_html_e('Copy', 'owbn-territory-manager'); ?>
+                        </button>
+                        <p class="description"><?php esc_html_e('Base URL for client connections.', 'owbn-territory-manager'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('API Key', 'owbn-territory-manager'); ?></th>
+                    <td>
+                        <input type="text"
+                            name="owbn_tm_api_key"
+                            id="owbn_tm_api_key"
+                            value="<?php echo esc_attr($api_key); ?>"
+                            class="regular-text code"
+                            readonly />
+                        <button type="button" class="button" onclick="owbnTmGenerateApiKey()">
+                            <?php esc_html_e('Generate New', 'owbn-territory-manager'); ?>
+                        </button>
+                        <p class="description"><?php esc_html_e('Required for API access. Share with authorized clients.', 'owbn-territory-manager'); ?></p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(__('Save API Settings', 'owbn-territory-manager')); ?>
+        </form>
+
+        <hr />
+
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+        <!-- STATUS -->
+        <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+        <h2><?php esc_html_e('Status', 'owbn-territory-manager'); ?></h2>
+
         <?php
         $chronicles   = get_transient('owbn_tm_chronicles_cache');
         $coordinators = get_transient('owbn_tm_coordinators_cache');
+        $territory_count = wp_count_posts('owbn_territory');
         ?>
+
         <table class="widefat" style="max-width:400px;">
+            <tr>
+                <td><strong><?php esc_html_e('Territories', 'owbn-territory-manager'); ?></strong></td>
+                <td><?php echo absint($territory_count->publish ?? 0); ?> <?php esc_html_e('published', 'owbn-territory-manager'); ?></td>
+            </tr>
             <tr>
                 <td><strong><?php esc_html_e('Chronicles', 'owbn-territory-manager'); ?></strong></td>
                 <td>
@@ -277,6 +388,20 @@ function owbn_tm_render_settings_page()
                         echo count($coordinators) . ' (' . esc_html($coord_mode) . ')';
                     } else {
                         echo '—';
+                    }
+                    ?>
+                </td>
+            </tr>
+            <tr>
+                <td><strong><?php esc_html_e('Territory API', 'owbn-territory-manager'); ?></strong></td>
+                <td>
+                    <?php
+                    if (!$api_enabled) {
+                        esc_html_e('Disabled', 'owbn-territory-manager');
+                    } elseif ($api_local_only) {
+                        esc_html_e('Local Only', 'owbn-territory-manager');
+                    } else {
+                        esc_html_e('Enabled', 'owbn-territory-manager');
                     }
                     ?>
                 </td>
@@ -323,6 +448,13 @@ function owbn_tm_render_settings_page()
                 $('.owbn-tm-coordinators-remote').toggle(this.value === 'remote');
             });
         })(jQuery);
+
+        function owbnTmGenerateApiKey() {
+            var field = document.getElementById('owbn_tm_api_key');
+            var key = 'tm_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            field.value = key;
+            field.removeAttribute('readonly');
+        }
     </script>
 <?php
 }

@@ -2,7 +2,7 @@
 
 /** File: admin/metabox.php
  * Text Domain: owbn-territory-manager
- * Version: 0.9.0
+ * Version: 1.0.0
  * @author greghacke
  * Function: Territory metabox for CPT editor
  */

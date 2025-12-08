@@ -2,7 +2,7 @@
 
 /** File: core/post-type.php
  * Text Domain: owbn-territory-manager
- * Version: 0.9.0
+ * Version: 1.0.0
  * @author greghacke
  * Function: Register territory CPT and meta
  */
