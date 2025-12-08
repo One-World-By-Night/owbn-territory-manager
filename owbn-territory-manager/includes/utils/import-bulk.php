@@ -20,50 +20,146 @@ function owbn_tm_map_country_to_iso(string $country): array
         return [];
     }
 
-    // Direct mappings for common variations
+    // Direct mappings for exact matches and common variations
     $direct_map = [
-        'USA'            => ['US'],
-        'United States'  => ['US'],
-        'U.S.A.'         => ['US'],
-        'UK'             => ['GB'],
-        'United Kingdom' => ['GB'],
-        'England'        => ['GB'],
-        'Scotland'       => ['GB'],
-        'Wales'          => ['GB'],
+        // Special codes
         'Worldwide'      => ['WW'],
         'World'          => ['WW'],
         'Global'         => ['WW'],
-        'Vatican City'   => ['VA'],
-        'Russia'         => ['RU'],
-        'South Korea'    => ['KR'],
-        'North Korea'    => ['KP'],
-        'Taiwan'         => ['TW'],
-        'Czech Republic' => ['CZ'],
-        'The Bahamas'    => ['BS'],
+
+        // Fictional/supernatural locations -> ZZ
+        'Aetherial Realm' => ['ZZ'],
+        'Asia'            => ['ZZ'],
+        'Bistritz'        => ['ZZ'],
+        'Colonia'         => ['ZZ'],
+        'Dreaming'        => ['ZZ'],
+        'Lemuria'         => ['ZZ'],
+        'Shadowlands'     => ['ZZ'],
+        'Southeast Asia'  => ['ZZ'],
+        'Stygia'          => ['ZZ'],
+        'Umbra'           => ['ZZ'],
+        'VM'              => ['ZZ'],
+
+        // US variations
+        'Florida'         => ['US'],
+        'Palisades-Kepler State Park' => ['US'],
+        'US'              => ['US'],
+        'USA'             => ['US'],
+        'United States'   => ['US'],
+        'U.S.A.'          => ['US'],
+
+        // UK variations
+        'England'         => ['GB'],
+        'Scotland'        => ['GB'],
+        'UK'              => ['GB'],
+        'United Kingdom'  => ['GB'],
+        'Wales'           => ['GB'],
+
+        // Standard country names
+        'Afghanistan'          => ['AF'],
+        'Argentina'            => ['AR'],
+        'Australia'            => ['AU'],
+        'Austria'              => ['AT'],
+        'Brazil'               => ['BR'],
+        'Canada'               => ['CA'],
+        'Cayman Islands'       => ['KY'],
+        'Chile'                => ['CL'],
+        'China'                => ['CN'],
+        'Colombia'             => ['CO'],
         'Commonwealth of The Bahamas (a.k.a. the Bahamas)' => ['BS'],
+        'Croatia'              => ['HR'],
+        'Cuba'                 => ['CU'],
+        'Czech Republic'       => ['CZ'],
+        'Denmark'              => ['DK'],
+        'Dominican Republic'   => ['DO'],
+        'Ecuador'              => ['EC'],
+        'Egypt'                => ['EG'],
+        'Finland'              => ['FI'],
+        'France'               => ['FR'],
+        'Germany'              => ['DE'],
+        'Greece'               => ['GR'],
+        'Haiti'                => ['HT'],
+        'Hungary'              => ['HU'],
+        'India'                => ['IN'],
+        'Indonesia'            => ['ID'],
+        'Iran'                 => ['IR'],
+        'Iraq'                 => ['IQ'],
+        'Ireland'              => ['IE'],
+        'Israel'               => ['IL'],
+        'Italy'                => ['IT'],
+        'Jamaica'              => ['JM'],
+        'Japan'                => ['JP'],
+        'Kazakhstan'           => ['KZ'],
+        'Lebanon'              => ['LB'],
+        'Macedonia'            => ['MK'],
+        'Mexico'               => ['MX'],
+        'Mongolia'             => ['MN'],
+        'Morocco'              => ['MA'],
+        'Netherlands'          => ['NL'],
+        'Nigeria'              => ['NG'],
+        'North Korea'          => ['KP'],
+        'Norway'               => ['NO'],
+        'Oman'                 => ['OM'],
+        'Pakistan'             => ['PK'],
+        'Panama'               => ['PA'],
+        'Paraguay'             => ['PY'],
+        'Peru'                 => ['PE'],
+        'Poland'               => ['PL'],
+        'Portugal'             => ['PT'],
+        'Romania'              => ['RO'],
+        'Russia'               => ['RU'],
+        'Saudi Arabia'         => ['SA'],
+        'Singapore'            => ['SG'],
+        'South Africa'         => ['ZA'],
+        'South Korea'          => ['KR'],
+        'Spain'                => ['ES'],
+        'Sri Lanka'            => ['LK'],
+        'Sweden'               => ['SE'],
+        'Switzerland'          => ['CH'],
+        'Syria'                => ['SY'],
+        'Taiwan'               => ['TW'],
+        'The Bahamas'          => ['BS'],
+        'The Bermudas or Somers Isles' => ['BM'],
+        'Tunisia'              => ['TN'],
+        'Turk and Calicos Islands' => ['TC'],
+        'Turkey'               => ['TR'],
+        'Uganda'               => ['UG'],
+        'Ukraine'              => ['UA'],
+        'United Arab Emirates' => ['AE'],
+        'Uruguay'              => ['UY'],
+        'Vatican City'         => ['VA'],
     ];
 
-    // Check direct map first
+    // Check direct map first (case-sensitive)
     if (isset($direct_map[$country])) {
         return $direct_map[$country];
     }
 
     // Check for multi-country (border territories)
-    $border_patterns = [
-        '/^(.+?)\s*[&]\s*(.+?)\s+Border$/i',
-        '/^(.+?)\s*[\/]\s*(.+?)$/i',
+    if (preg_match('/^(.+?)\s*[&]\s*(.+?)\s+Border$/i', $country, $matches)) {
+        $codes = [];
+        $codes = array_merge($codes, owbn_tm_map_country_to_iso(trim($matches[1])));
+        $codes = array_merge($codes, owbn_tm_map_country_to_iso(trim($matches[2])));
+        return array_unique($codes);
+    }
+
+    // Check for contains patterns
+    $contains_map = [
+        'Canada'   => ['CA'],
+        'France'   => ['FR'],
+        'Jamaica'  => ['JM'],
+        'Arizona'  => ['US'],
+        'Iowa'     => ['US'],
+        'Lemuria'  => ['ZZ'],
     ];
 
-    foreach ($border_patterns as $pattern) {
-        if (preg_match($pattern, $country, $matches)) {
-            $codes = [];
-            $codes = array_merge($codes, owbn_tm_map_country_to_iso(trim($matches[1])));
-            $codes = array_merge($codes, owbn_tm_map_country_to_iso(trim($matches[2])));
-            return array_unique($codes);
+    foreach ($contains_map as $needle => $codes) {
+        if (stripos($country, $needle) !== false) {
+            return $codes;
         }
     }
 
-    // Reverse lookup from country list
+    // Reverse lookup from country list (case-insensitive)
     $countries = owbn_tm_get_country_list();
     $country_lower = strtolower($country);
 
@@ -73,40 +169,7 @@ function owbn_tm_map_country_to_iso(string $country): array
         }
     }
 
-    // Check if country contains a known country name (e.g., "BC, Canada")
-    foreach ($countries as $code => $name) {
-        if (stripos($country, $name) !== false) {
-            return [$code];
-        }
-    }
-
-    // Fictional/special locations
-    $fictional = [
-        'Aetherial Realm',
-        'Dreaming',
-        'Umbra',
-        'Shadowlands',
-        'Bistritz',
-        'Colonia',
-        'Lemuria',
-        'VM',
-    ];
-
-    foreach ($fictional as $f) {
-        if (stripos($country, $f) !== false) {
-            return ['ZZ'];
-        }
-    }
-
-    // If it looks like a US state or location with state
-    $us_states = ['Florida', 'Arizona', 'California', 'Texas', 'New York', 'Ohio', 'Pennsylvania'];
-    foreach ($us_states as $state) {
-        if (stripos($country, $state) !== false) {
-            return ['US'];
-        }
-    }
-
-    // Default to custom
+    // Default to custom/unknown
     return ['ZZ'];
 }
 
@@ -125,6 +188,7 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         'imported' => 0,
         'skipped'  => 0,
         'errors'   => [],
+        'warnings' => [],
         'dry_run'  => $dry_run,
     ];
 
@@ -150,6 +214,7 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
 
     foreach ($rows as $index => $row) {
         $row_num = $index + 2; // Account for header row
+        $row_issues = [];
 
         // Extract fields (case-insensitive column matching)
         $country     = $row['country'] ?? $row['Country'] ?? '';
@@ -163,19 +228,45 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         // Skip empty rows
         if (empty($country) && empty($region) && empty($location)) {
             $results['skipped']++;
+            $results['warnings'][] = sprintf(
+                __('Row %d: Skipped - no country, region, or location data', 'owbn-territory-manager'),
+                $row_num
+            );
             continue;
         }
 
-        // Map country to ISO codes
-        $country_codes = owbn_tm_map_country_to_iso($country);
+        // Map country to ISO codes (default to US if empty)
+        if (empty($country)) {
+            $country_codes = ['US'];
+        } else {
+            $country_codes = owbn_tm_map_country_to_iso($country);
 
-        // Generate title
-        $title_parts = array_filter([
-            owbn_tm_format_countries($country_codes),
-            $region,
-            $location,
-        ]);
-        $title = !empty($title_parts) ? implode(' > ', $title_parts) : "Territory Row {$row_num}";
+            // Check for unknown country mapping
+            if ($country_codes === ['ZZ']) {
+                $row_issues[] = sprintf(
+                    __('Unknown country "%s" mapped to Custom/Other (ZZ)', 'owbn-territory-manager'),
+                    $country
+                );
+            }
+        }
+
+        // Generate title: Country - Region, Location
+        // For ZZ (fictional/custom), use original country name to preserve it
+        if ($country_codes === ['ZZ'] && !empty($country)) {
+            $title = $country;
+        } else {
+            $title = owbn_tm_format_countries($country_codes);
+        }
+
+        if (!empty($region)) {
+            $title .= ' - ' . $region;
+        }
+        if (!empty($location)) {
+            $title .= ', ' . $location;
+        }
+        if (empty($title)) {
+            $title = "Territory Row {$row_num}";
+        }
 
         // Handle slug (could be comma-separated)
         $slugs = [];
@@ -183,6 +274,16 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             $slugs = array_filter(array_map('trim', explode(',', $slug)));
         }
 
+        // Log row issues as warnings
+        if (!empty($row_issues)) {
+            $results['warnings'][] = sprintf(
+                __('Row %d: %s', 'owbn-territory-manager'),
+                $row_num,
+                implode('; ', $row_issues)
+            );
+        }
+
+        // Dry run - don't insert, just validate
         if ($dry_run) {
             $results['imported']++;
             continue;
@@ -198,7 +299,7 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
 
         if (is_wp_error($post_id)) {
             $results['errors'][] = sprintf(
-                __('Row %d: %s', 'owbn-territory-manager'),
+                __('Row %d: Failed to create post - %s', 'owbn-territory-manager'),
                 $row_num,
                 $post_id->get_error_message()
             );
@@ -226,26 +327,44 @@ function owbn_tm_parse_csv(string $file_path): array
 {
     $rows = [];
 
-    if (($handle = fopen($file_path, 'r')) === false) {
+    // Read entire file and remove BOM
+    $content = file_get_contents($file_path);
+    if ($content === false) {
         return $rows;
     }
 
-    $headers = fgetcsv($handle);
+    // Remove UTF-8 BOM if present
+    $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+
+    // Normalize line endings
+    $content = str_replace("\r\n", "\n", $content);
+    $content = str_replace("\r", "\n", $content);
+
+    // Write to temp file for fgetcsv
+    $temp = tmpfile();
+    if ($temp === false) {
+        return $rows;
+    }
+
+    fwrite($temp, $content);
+    rewind($temp);
+
+    $headers = fgetcsv($temp);
     if (!$headers) {
-        fclose($handle);
+        fclose($temp);
         return $rows;
     }
 
     // Normalize headers
     $headers = array_map('trim', $headers);
 
-    while (($data = fgetcsv($handle)) !== false) {
+    while (($data = fgetcsv($temp)) !== false) {
         if (count($data) === count($headers)) {
             $rows[] = array_combine($headers, $data);
         }
     }
 
-    fclose($handle);
+    fclose($temp);
     return $rows;
 }
 
@@ -270,7 +389,12 @@ function owbn_tm_render_import_page()
         <h1><?php esc_html_e('Import Territories', 'owbn-territory-manager'); ?></h1>
 
         <?php if ($results) : ?>
-            <div class="notice notice-<?php echo empty($results['errors']) ? 'success' : 'warning'; ?>">
+            <?php
+            $has_errors   = !empty($results['errors']);
+            $has_warnings = !empty($results['warnings']);
+            $notice_class = $has_errors ? 'error' : ($has_warnings ? 'warning' : 'success');
+            ?>
+            <div class="notice notice-<?php echo $notice_class; ?>">
                 <p>
                     <?php if ($results['dry_run']) : ?>
                         <strong><?php esc_html_e('Dry Run Results:', 'owbn-territory-manager'); ?></strong><br>
@@ -278,24 +402,42 @@ function owbn_tm_render_import_page()
                         <strong><?php esc_html_e('Import Complete:', 'owbn-territory-manager'); ?></strong><br>
                     <?php endif; ?>
                     <?php printf(
-                        esc_html__('Total: %d | Imported: %d | Skipped: %d | Errors: %d', 'owbn-territory-manager'),
+                        esc_html__('Total: %d | Imported: %d | Skipped: %d | Errors: %d | Warnings: %d', 'owbn-territory-manager'),
                         $results['total'],
                         $results['imported'],
                         $results['skipped'],
-                        count($results['errors'])
+                        count($results['errors']),
+                        count($results['warnings'])
                     ); ?>
                 </p>
-                <?php if (!empty($results['errors'])) : ?>
-                    <details>
-                        <summary><?php esc_html_e('View Errors', 'owbn-territory-manager'); ?></summary>
-                        <ul>
+            </div>
+
+            <?php if ($has_errors) : ?>
+                <div class="notice notice-error">
+                    <details open>
+                        <summary><strong><?php esc_html_e('Errors (import failed for these rows)', 'owbn-territory-manager'); ?></strong></summary>
+                        <ul style="margin-left:20px;">
                             <?php foreach ($results['errors'] as $error) : ?>
                                 <li><?php echo esc_html($error); ?></li>
                             <?php endforeach; ?>
                         </ul>
                     </details>
-                <?php endif; ?>
-            </div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($has_warnings) : ?>
+                <div class="notice notice-warning">
+                    <details>
+                        <summary><strong><?php esc_html_e('Warnings (imported with issues)', 'owbn-territory-manager'); ?></strong></summary>
+                        <ul style="margin-left:20px;">
+                            <?php foreach ($results['warnings'] as $warning) : ?>
+                                <li><?php echo esc_html($warning); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
+                </div>
+            <?php endif; ?>
+
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data">
@@ -315,7 +457,7 @@ function owbn_tm_render_import_page()
                     <th scope="row"><?php esc_html_e('Options', 'owbn-territory-manager'); ?></th>
                     <td>
                         <label>
-                            <input type="checkbox" name="dry_run" value="1" />
+                            <input type="checkbox" name="dry_run" value="1" checked />
                             <?php esc_html_e('Dry run (validate without importing)', 'owbn-territory-manager'); ?>
                         </label>
                     </td>
