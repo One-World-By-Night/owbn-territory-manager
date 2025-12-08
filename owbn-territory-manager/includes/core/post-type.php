@@ -104,6 +104,20 @@ function owbn_tm_register_meta()
                 ],
             ],
         ],
+        '_owbn_tm_update_date' => [
+            'type'         => 'string',
+            'description'  => 'Last update date from source',
+            'single'       => true,
+            'default'      => '',
+            'show_in_rest' => true,
+        ],
+        '_owbn_tm_update_user' => [
+            'type'         => 'string',
+            'description'  => 'User who last updated in source',
+            'single'       => true,
+            'default'      => '',
+            'show_in_rest' => true,
+        ],
     ];
 
     foreach ($meta_fields as $key => $args) {

@@ -4,7 +4,7 @@
  * Text Domain: owbn-territory-manager
  * Version: 1.0.0
  * @author greghacke
- * Function: Bulk import territories from CSV
+ * Function: Bulk import territories from CSV or JSON
  */
 
 defined('ABSPATH') || exit;
@@ -91,6 +91,7 @@ function owbn_tm_map_country_to_iso(string $country): array
         'Japan'                => ['JP'],
         'Kazakhstan'           => ['KZ'],
         'Lebanon'              => ['LB'],
+        'Lithuania'            => ['LT'],
         'Macedonia'            => ['MK'],
         'Mexico'               => ['MX'],
         'Mongolia'             => ['MN'],
@@ -104,6 +105,7 @@ function owbn_tm_map_country_to_iso(string $country): array
         'Panama'               => ['PA'],
         'Paraguay'             => ['PY'],
         'Peru'                 => ['PE'],
+        'Philippines'          => ['PH'],
         'Poland'               => ['PL'],
         'Portugal'             => ['PT'],
         'Romania'              => ['RO'],
@@ -174,7 +176,62 @@ function owbn_tm_map_country_to_iso(string $country): array
 }
 
 /**
- * Process CSV import.
+ * Extract normalized fields from a row (CSV or JSON).
+ *
+ * @param array $row Raw row data
+ * @return array Normalized fields
+ */
+function owbn_tm_extract_row_fields(array $row): array
+{
+    // CSV column names
+    $country     = $row['country'] ?? $row['Country'] ?? '';
+    $region      = $row['region'] ?? $row['Region'] ?? '';
+    $location    = $row['location'] ?? $row['Location'] ?? '';
+    $detail      = $row['detail'] ?? $row['Detail'] ?? '';
+    $description = $row['description'] ?? $row['Description'] ?? '';
+    $owner       = $row['owner'] ?? $row['Owner'] ?? '';
+    $slug        = $row['slug'] ?? $row['Slug'] ?? '';
+    $update_date = $row['update_date'] ?? $row['UpdateDate'] ?? '';
+    $update_user = $row['update_user'] ?? $row['UpdateUser'] ?? '';
+
+    // JSON column names (Drupal export format)
+    if (empty($region) && isset($row['State/Province'])) {
+        $region = $row['State/Province'];
+    }
+    if (empty($location) && isset($row['County'])) {
+        $location = $row['County'];
+    }
+    if (empty($detail) && isset($row['City'])) {
+        $detail = $row['City'];
+    }
+    if (empty($description) && isset($row['Notes'])) {
+        $description = $row['Notes'];
+    }
+    if (empty($owner) && isset($row['Controlled By'])) {
+        $owner = $row['Controlled By'];
+    }
+    if (empty($update_date) && isset($row['Last Updated'])) {
+        $update_date = $row['Last Updated'];
+    }
+    if (empty($update_user) && isset($row['Updated By'])) {
+        $update_user = $row['Updated By'];
+    }
+
+    return [
+        'country'     => trim($country),
+        'region'      => trim($region),
+        'location'    => trim($location),
+        'detail'      => trim($detail),
+        'description' => trim($description),
+        'owner'       => trim($owner),
+        'slug'        => trim($slug),
+        'update_date' => trim($update_date),
+        'update_user' => trim($update_user),
+    ];
+}
+
+/**
+ * Process CSV or JSON import.
  *
  * @param string $file_path     Path to uploaded temp file
  * @param string $original_name Original filename for extension detection
@@ -195,15 +252,18 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
     // Determine file type from original filename
     $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
 
-    if ($ext !== 'csv') {
+    if (!in_array($ext, ['csv', 'json'], true)) {
         $results['errors'][] = sprintf(
-            __('Unsupported file type: %s. Use CSV.', 'owbn-territory-manager'),
+            __('Unsupported file type: %s. Use CSV or JSON.', 'owbn-territory-manager'),
             $ext ?: 'unknown'
         );
         return $results;
     }
 
-    $rows = owbn_tm_parse_csv($file_path);
+    // Parse file based on type
+    $rows = ($ext === 'json')
+        ? owbn_tm_parse_json($file_path)
+        : owbn_tm_parse_csv($file_path);
 
     if (empty($rows)) {
         $results['errors'][] = __('No data found in file.', 'owbn-territory-manager');
@@ -213,17 +273,21 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
     $results['total'] = count($rows);
 
     foreach ($rows as $index => $row) {
-        $row_num = $index + 2; // Account for header row
+        $row_num = $index + 1;
         $row_issues = [];
 
-        // Extract fields (case-insensitive column matching)
-        $country     = $row['country'] ?? $row['Country'] ?? '';
-        $region      = $row['region'] ?? $row['Region'] ?? '';
-        $location    = $row['location'] ?? $row['Location'] ?? '';
-        $detail      = $row['detail'] ?? $row['Detail'] ?? '';
-        $description = $row['description'] ?? $row['Description'] ?? '';
-        $owner       = $row['owner'] ?? $row['Owner'] ?? '';
-        $slug        = $row['slug'] ?? $row['Slug'] ?? '';
+        // Extract and normalize fields
+        $fields = owbn_tm_extract_row_fields($row);
+
+        $country     = $fields['country'];
+        $region      = $fields['region'];
+        $location    = $fields['location'];
+        $detail      = $fields['detail'];
+        $description = $fields['description'];
+        $owner       = $fields['owner'];
+        $slug        = $fields['slug'];
+        $update_date = $fields['update_date'];
+        $update_user = $fields['update_user'];
 
         // Skip empty rows
         if (empty($country) && empty($region) && empty($location)) {
@@ -263,6 +327,9 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         }
         if (!empty($location)) {
             $title .= ', ' . $location;
+        }
+        if (!empty($detail)) {
+            $title .= ' - ' . $detail;
         }
         if (empty($title)) {
             $title = "Territory Row {$row_num}";
@@ -313,11 +380,50 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         update_post_meta($post_id, '_owbn_tm_detail', sanitize_text_field($detail));
         update_post_meta($post_id, '_owbn_tm_owner', sanitize_text_field($owner));
         update_post_meta($post_id, '_owbn_tm_slug', $slugs);
+        update_post_meta($post_id, '_owbn_tm_update_date', sanitize_text_field($update_date));
+        update_post_meta($post_id, '_owbn_tm_update_user', sanitize_text_field($update_user));
 
         $results['imported']++;
     }
 
     return $results;
+}
+
+/**
+ * Parse JSON file (Drupal export format).
+ *
+ * Expected format: {"nodes":[{"node":{...}},{"node":{...}}]}
+ *
+ * @param string $file_path Path to JSON file
+ * @return array Rows
+ */
+function owbn_tm_parse_json(string $file_path): array
+{
+    $rows = [];
+
+    $content = file_get_contents($file_path);
+    if ($content === false) {
+        return $rows;
+    }
+
+    // Remove UTF-8 BOM if present
+    $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+
+    $data = json_decode($content, true);
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+        return $rows;
+    }
+
+    // Handle {"nodes":[{"node":{...}}]} format
+    if (isset($data['nodes']) && is_array($data['nodes'])) {
+        foreach ($data['nodes'] as $item) {
+            if (isset($item['node']) && is_array($item['node'])) {
+                $rows[] = $item['node'];
+            }
+        }
+    }
+
+    return $rows;
 }
 
 /**
@@ -449,8 +555,11 @@ function owbn_tm_render_import_page()
                         <label for="import_file"><?php esc_html_e('File', 'owbn-territory-manager'); ?></label>
                     </th>
                     <td>
-                        <input type="file" name="import_file" id="import_file" accept=".csv" required />
-                        <p class="description"><?php esc_html_e('CSV file with columns: Country, Region, Location, Detail, Description, Owner, Slug', 'owbn-territory-manager'); ?></p>
+                        <input type="file" name="import_file" id="import_file" accept=".csv,.json" required />
+                        <p class="description">
+                            <?php esc_html_e('CSV columns: Country, Region, Location, Detail, Description, Owner, Slug, UpdateDate, UpdateUser', 'owbn-territory-manager'); ?><br>
+                            <?php esc_html_e('JSON format: {"nodes":[{"node":{...}}]} with Drupal export fields', 'owbn-territory-manager'); ?>
+                        </p>
                     </td>
                 </tr>
                 <tr>
@@ -473,8 +582,10 @@ function owbn_tm_render_import_page()
 
         <hr>
 
-        <h2><?php esc_html_e('Expected Format', 'owbn-territory-manager'); ?></h2>
-        <table class="widefat" style="max-width:800px;">
+        <h2><?php esc_html_e('Expected Formats', 'owbn-territory-manager'); ?></h2>
+
+        <h3><?php esc_html_e('CSV Format', 'owbn-territory-manager'); ?></h3>
+        <table class="widefat" style="max-width:900px;">
             <thead>
                 <tr>
                     <th>Country</th>
@@ -484,6 +595,8 @@ function owbn_tm_render_import_page()
                     <th>Description</th>
                     <th>Owner</th>
                     <th>Slug</th>
+                    <th>UpdateDate</th>
+                    <th>UpdateUser</th>
                 </tr>
             </thead>
             <tbody>
@@ -495,15 +608,52 @@ function owbn_tm_render_import_page()
                     <td>Shared territory...</td>
                     <td>Green Bay, WI</td>
                     <td>green-bay-wi</td>
+                    <td>2024-01-15</td>
+                    <td>admin</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3><?php esc_html_e('JSON Format (Drupal Export)', 'owbn-territory-manager'); ?></h3>
+        <table class="widefat" style="max-width:600px;">
+            <thead>
+                <tr>
+                    <th><?php esc_html_e('JSON Field', 'owbn-territory-manager'); ?></th>
+                    <th><?php esc_html_e('Maps To', 'owbn-territory-manager'); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Country</td>
+                    <td>Country</td>
                 </tr>
                 <tr>
-                    <td>Worldwide</td>
-                    <td>Coord Level</td>
-                    <td>NPC Chantries</td>
-                    <td></td>
-                    <td>Geographical...</td>
-                    <td>Tremere</td>
-                    <td>tremere</td>
+                    <td>State/Province</td>
+                    <td>Region</td>
+                </tr>
+                <tr>
+                    <td>County</td>
+                    <td>Location</td>
+                </tr>
+                <tr>
+                    <td>City</td>
+                    <td>Detail</td>
+                </tr>
+                <tr>
+                    <td>Notes</td>
+                    <td>Description</td>
+                </tr>
+                <tr>
+                    <td>Controlled By</td>
+                    <td>Owner</td>
+                </tr>
+                <tr>
+                    <td>Last Updated</td>
+                    <td>UpdateDate</td>
+                </tr>
+                <tr>
+                    <td>Updated By</td>
+                    <td>UpdateUser</td>
                 </tr>
             </tbody>
         </table>
