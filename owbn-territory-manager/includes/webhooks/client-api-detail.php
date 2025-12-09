@@ -4,7 +4,7 @@
  * Text Domain: owbn-territory-manager
  * Version: 1.0.0
  * @author greghacke
- * Function: Load webhooks files
+ * Function: Territory detail API endpoints
  */
 
 defined('ABSPATH') || exit;
@@ -42,7 +42,6 @@ function owbn_tm_api_get_territories_by_slug($request)
         return new WP_Error('missing_slug', 'Slug is required', ['status' => 400]);
     }
 
-    // Query territories where slug array contains the requested slug
     $query = new WP_Query([
         'post_type'      => 'owbn_territory',
         'post_status'    => 'publish',
@@ -64,7 +63,6 @@ function owbn_tm_api_get_territories_by_slug($request)
             $post_id = get_the_ID();
             $slugs = get_post_meta($post_id, '_owbn_tm_slug', true) ?: [];
 
-            // Verify exact match (LIKE can match partial)
             if (is_array($slugs) && in_array($slug, $slugs, true)) {
                 $results[] = owbn_tm_format_detail_data($post_id);
             }
@@ -83,7 +81,6 @@ function owbn_tm_format_detail_data($post_id)
     $countries = get_post_meta($post_id, '_owbn_tm_countries', true);
     $slugs = get_post_meta($post_id, '_owbn_tm_slug', true);
 
-    // Ensure arrays, filter empty values, re-index for proper JSON array encoding
     $countries = is_array($countries) ? array_values(array_filter($countries)) : [];
     $slugs = is_array($slugs) ? array_values(array_filter($slugs)) : [];
 
@@ -97,5 +94,7 @@ function owbn_tm_format_detail_data($post_id)
         'owner'       => get_post_meta($post_id, '_owbn_tm_owner', true) ?: '',
         'slugs'       => $slugs,
         'description' => get_post_field('post_content', $post_id),
+        'update_date' => get_post_meta($post_id, '_owbn_tm_update_date', true) ?: '',
+        'update_user' => get_post_meta($post_id, '_owbn_tm_update_user', true) ?: '',
     ];
 }
