@@ -2,7 +2,7 @@
 
 /** File: admin/columns.php
  * Text Domain: owbn-territory-manager
- * Version: 1.0.0
+ * Version: 1.1.0
  * @author greghacke
  * Function: Admin list table columns for territories
  */
@@ -162,4 +162,134 @@ function owbn_tm_search_where($where, $query)
     );
 
     return $where;
+}
+
+// ─── Bulk Edit Support ───────────────────────────────────────────────────────
+add_action('bulk_edit_custom_box', 'owbn_tm_bulk_edit_custom_box', 10, 2);
+
+function owbn_tm_bulk_edit_custom_box($column_name, $post_type)
+{
+    if ($post_type !== 'owbn_territory' || $column_name !== 'slugs') {
+        return;
+    }
+
+    $all_slugs = owbn_tm_get_all_slugs();
+?>
+    <fieldset class="inline-edit-col-right">
+        <div class="inline-edit-col">
+            <label class="inline-edit-slugs">
+                <span class="title"><?php esc_html_e('Slugs', 'owbn-territory-manager'); ?></span>
+                <select name="owbn_tm_bulk_slug[]" id="owbn_tm_bulk_slug" multiple="multiple" style="width:100%;">
+                    <?php foreach ($all_slugs as $s => $label) : ?>
+                        <option value="<?php echo esc_attr($s); ?>"><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <p class="description" style="margin-top:5px;">
+                <label>
+                    <input type="checkbox" name="owbn_tm_bulk_slug_replace" value="1" checked />
+                    <?php esc_html_e('Replace existing slugs (uncheck to skip)', 'owbn-territory-manager'); ?>
+                </label>
+            </p>
+        </div>
+    </fieldset>
+<?php
+}
+
+add_action('admin_footer-edit.php', 'owbn_tm_bulk_edit_js');
+
+function owbn_tm_bulk_edit_js()
+{
+    global $post_type;
+    if ($post_type !== 'owbn_territory') {
+        return;
+    }
+?>
+    <script>
+        jQuery(function($) {
+            var select2Initialized = false;
+
+            // Initialize Select2 when bulk edit row appears
+            $(document).ajaxComplete(function(event, xhr, settings) {
+                if (settings.data && settings.data.indexOf('action=inline-save') === -1) {
+                    initBulkSelect2();
+                }
+            });
+
+            // Also init on click
+            $(document).on('click', '.editinline', function() {
+                setTimeout(initBulkSelect2, 200);
+            });
+
+            function initBulkSelect2() {
+                var $select = $('#owbn_tm_bulk_slug');
+                if ($select.length && !$select.hasClass('select2-hidden-accessible')) {
+                    $select.select2({
+                        placeholder: '<?php echo esc_js(__('Type to search...', 'owbn-territory-manager')); ?>',
+                        allowClear: true,
+                        width: '100%',
+                        minimumInputLength: 1
+                    });
+                    select2Initialized = true;
+                }
+            }
+
+            // Handle bulk edit save
+            $(document).on('click', '#bulk_edit', function() {
+                var $bulk_row = $('#bulk-edit');
+                var $post_ids = $bulk_row.find('#bulk-titles-list .ntdelbutton').map(function() {
+                    return $(this).attr('id').replace('_', '');
+                }).get();
+
+                var slugs = $('#owbn_tm_bulk_slug').val() || [];
+                var replace = $('input[name="owbn_tm_bulk_slug_replace"]').is(':checked');
+
+                if (slugs.length > 0 || replace) {
+                    $.ajax({
+                        url: ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'owbn_tm_bulk_edit_save',
+                            post_ids: $post_ids,
+                            slugs: slugs,
+                            replace: replace ? 1 : 0,
+                            nonce: '<?php echo wp_create_nonce('owbn_tm_bulk_edit'); ?>'
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+<?php
+}
+
+add_action('wp_ajax_owbn_tm_bulk_edit_save', 'owbn_tm_bulk_edit_save');
+
+function owbn_tm_bulk_edit_save()
+{
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'owbn_tm_bulk_edit')) {
+        wp_die();
+    }
+
+    if (!current_user_can('edit_posts')) {
+        wp_die();
+    }
+
+    $post_ids = isset($_POST['post_ids']) ? array_map('absint', $_POST['post_ids']) : [];
+    $slugs = isset($_POST['slugs']) && is_array($_POST['slugs']) ? array_map('sanitize_text_field', $_POST['slugs']) : [];
+    $replace = isset($_POST['replace']) && $_POST['replace'] === '1';
+
+    if (empty($post_ids)) {
+        wp_die();
+    }
+
+    if ($replace) {
+        foreach ($post_ids as $post_id) {
+            if (get_post_type($post_id) === 'owbn_territory') {
+                update_post_meta($post_id, '_owbn_tm_slug', $slugs);
+            }
+        }
+    }
+
+    wp_die();
 }

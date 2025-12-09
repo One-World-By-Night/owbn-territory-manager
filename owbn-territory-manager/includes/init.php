@@ -2,7 +2,7 @@
 
 /** File: includes/init.php
  * Text Domain: owbn-territory-manager
- * Version: 1.0.0
+ * Version: 1.1.0
  * @author greghacke
  * Function: Single entry point to load all plugin components
  */

@@ -4,7 +4,7 @@ Tags: owbn, territory, vampire, larp, chronicle, coordinator
 Requires at least: 5.8
 Tested up to: 6.4
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,7 +73,7 @@ Public read access is available. Write operations require authentication.
 
 == Changelog ==
 
-= 1.0.0 =
+= 1.1.0 =
 * Initial release
 * Territory CRUD admin interface
 * REST API endpoints
@@ -83,5 +83,5 @@ Public read access is available. Write operations require authentication.
 
 == Upgrade Notice ==
 
-= 1.0.0 =
+= 1.1.0 =
 Initial release.

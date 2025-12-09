@@ -2,7 +2,7 @@
 
 /** File: webhooks/init.php
  * Text Domain: owbn-territory-manager
- * Version: 1.0.0
+ * Version: 1.1.0
  * @author greghacke
  * Function: Load webhooks files
  */
