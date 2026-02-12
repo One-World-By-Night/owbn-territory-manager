@@ -10,6 +10,3 @@
 defined('ABSPATH') || exit;
 
 require_once __DIR__ . '/import-bulk.php';
-require_once __DIR__ . '/export-bulk.php';
-require_once __DIR__ . '/import-record.php';
-require_once __DIR__ . '/export-record.php';
