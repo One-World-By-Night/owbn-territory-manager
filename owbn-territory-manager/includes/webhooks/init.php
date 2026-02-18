@@ -1,14 +1,12 @@
 <?php
-
-/** File: webhooks/init.php
- * Text Domain: owbn-territory-manager
- * Version: 1.1.0
- * @author greghacke
- * Function: Load webhooks files
+/**
+ * Webhooks — Removed
+ *
+ * Territory REST API endpoints have been removed from this plugin.
+ * Data is now served through the OWBN Client API Gateway.
+ *
+ * @package OWBN Territory Manager
+ * @since 1.3.0
  */
 
-defined('ABSPATH') || exit;
-
-require_once __DIR__ . '/client-init.php';
-require_once __DIR__ . '/client-api-list.php';
-require_once __DIR__ . '/client-api-detail.php';
+if (!defined('ABSPATH')) exit;
