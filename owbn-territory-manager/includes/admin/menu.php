@@ -21,7 +21,7 @@ function owbn_tm_register_admin_menu()
         'owbn-territory',
         null,
         'dashicons-location',
-        30
+        31
     );
 
     // Settings

@@ -171,8 +171,8 @@ function owbn_tm_map_country_to_iso(string $country): array
         }
     }
 
-    // Default to custom/unknown
-    return ['ZZ'];
+    // Default to configured unknown country code
+    return [get_option('owbn_tm_import_unknown_country', 'ZZ')];
 }
 
 /**
@@ -299,9 +299,9 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             continue;
         }
 
-        // Map country to ISO codes (default to US if empty)
+        // Map country to ISO codes (default to configured default if empty)
         if (empty($country)) {
-            $country_codes = ['US'];
+            $country_codes = [get_option('owbn_tm_import_default_country', 'US')];
         } else {
             $country_codes = owbn_tm_map_country_to_iso($country);
 
