@@ -1,18 +1,9 @@
 <?php
-
-/** File: core/post-type.php
- * Text Domain: owbn-territory-manager
- * Version: 1.1.0
- * @author greghacke
- * Function: Register territory CPT and meta
- */
-
 defined('ABSPATH') || exit;
 
 add_action('init', 'owbn_tm_register_post_type');
 
-function owbn_tm_register_post_type()
-{
+function owbn_tm_register_post_type() {
     $labels = [
         'name'               => __('Territories', 'owbn-territory-manager'),
         'singular_name'      => __('Territory', 'owbn-territory-manager'),
@@ -28,7 +19,7 @@ function owbn_tm_register_post_type()
         'menu_name'          => __('Territories', 'owbn-territory-manager'),
     ];
 
-    $args = [
+    register_post_type('owbn_territory', [
         'labels'              => $labels,
         'public'              => true,
         'publicly_queryable'  => true,
@@ -42,15 +33,12 @@ function owbn_tm_register_post_type()
         'rewrite'             => ['slug' => 'territory', 'with_front' => false],
         'supports'            => ['title', 'editor', 'revisions'],
         'menu_icon'           => 'dashicons-location',
-    ];
-
-    register_post_type('owbn_territory', $args);
+    ]);
 }
 
 add_action('init', 'owbn_tm_register_meta');
 
-function owbn_tm_register_meta()
-{
+function owbn_tm_register_meta() {
     $meta_fields = [
         '_owbn_tm_countries' => [
             'type'         => 'array',

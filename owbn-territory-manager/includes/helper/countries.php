@@ -1,31 +1,16 @@
 <?php
-
-/** File: helper/countries.php
- * Text Domain: owbn-territory-manager
- * Version: 1.1.0
- * @author greghacke
- * Function: Country list helper with special territory codes
- */
-
 defined('ABSPATH') || exit;
 
-/**
- * Get country list with special territory codes.
- */
-function owbn_tm_get_country_list(): array
-{
-    // Special codes first
+function owbn_tm_get_country_list(): array {
     $special = [
         'WW' => 'Worldwide',
         'ZZ' => 'Custom/Other',
     ];
 
-    // Use chronicle-manager list if available
     if (function_exists('owbn_get_country_list')) {
         return $special + owbn_get_country_list();
     }
 
-    // Fallback full list
     return $special + [
         'AF' => 'Afghanistan',
         'AL' => 'Albania',
@@ -230,30 +215,15 @@ function owbn_tm_get_country_list(): array
     ];
 }
 
-/**
- * Get country name from ISO code.
- */
-function owbn_tm_get_country_name(string $code): string
-{
+function owbn_tm_get_country_name(string $code): string {
     $countries = owbn_tm_get_country_list();
     return $countries[$code] ?? $code;
 }
 
-/**
- * Get country names from array of ISO codes.
- */
-function owbn_tm_get_country_names(array $codes): array
-{
+function owbn_tm_get_country_names(array $codes): array {
     return array_map('owbn_tm_get_country_name', $codes);
 }
 
-/**
- * Format country codes for display.
- * 
- * @param array $codes Array of ISO codes
- * @return string Comma-separated country names
- */
-function owbn_tm_format_countries(array $codes): string
-{
+function owbn_tm_format_countries(array $codes): string {
     return implode(', ', owbn_tm_get_country_names($codes));
 }

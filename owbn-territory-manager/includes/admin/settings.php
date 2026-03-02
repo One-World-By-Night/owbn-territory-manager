@@ -1,19 +1,9 @@
 <?php
-
-/** File: admin/settings.php
- * Text Domain: owbn-territory-manager
- * Version: 1.4.0
- * @author greghacke
- * Function: Territory Manager settings page
- */
-
 defined('ABSPATH') || exit;
 
-// ─── Register Settings ───────────────────────────────────────────────────────
 add_action('admin_init', 'owbn_tm_register_settings');
 
-function owbn_tm_register_settings()
-{
+function owbn_tm_register_settings() {
     register_setting('owbn_tm_settings', 'owbn_tm_import_default_country', [
         'type'              => 'string',
         'default'           => 'US',
@@ -27,9 +17,7 @@ function owbn_tm_register_settings()
     ]);
 }
 
-// ─── Render Settings Page ────────────────────────────────────────────────────
-function owbn_tm_render_settings_page()
-{
+function owbn_tm_render_settings_page() {
     if (!current_user_can('manage_options')) {
         return;
     }

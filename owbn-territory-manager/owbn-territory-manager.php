@@ -2,8 +2,8 @@
 
 /**
  * Plugin Name: OWBN Territory Manager
- * Description: Unified listing of chronicle and coordinator territories with slug associations. Provides admin management, public display, and REST API access.
- * Version: 1.4.0
+ * Description: Manage chronicle and coordinator territory assignments with admin tools and bulk import.
+ * Version: 1.5.0
  * Author: greghacke
  * Author URI: https://www.owbn.net
  * Text Domain: owbn-territory-manager
@@ -16,17 +16,14 @@
 
 defined('ABSPATH') || exit;
 
-// ─── Plugin Constants ────────────────────────────────────────────────────────
-define('OWBN_TM_VERSION', '1.4.0');
+define('OWBN_TM_VERSION', '1.5.0');
 define('OWBN_TM_PLUGIN_FILE', __FILE__);
 define('OWBN_TM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('OWBN_TM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('OWBN_TM_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-// ─── Bootstrap ───────────────────────────────────────────────────────────────
 require_once OWBN_TM_PLUGIN_DIR . 'includes/init.php';
 
-// ─── Gateway Data Source Registration ────────────────────────────────────────
 add_filter('owbn_gateway_data_sources', function ($sources) {
     $sources['territory'] = [
         'label'    => 'Territories',

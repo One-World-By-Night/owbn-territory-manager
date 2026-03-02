@@ -1,25 +1,14 @@
 <?php
-
-/** File: admin/columns.php
- * Text Domain: owbn-territory-manager
- * Version: 1.1.0
- * @author greghacke
- * Function: Admin list table columns for territories
- */
-
 defined('ABSPATH') || exit;
 
-// ─── Register Columns ────────────────────────────────────────────────────────
 add_filter('manage_owbn_territory_posts_columns', 'owbn_tm_register_columns');
 
-function owbn_tm_register_columns($columns)
-{
+function owbn_tm_register_columns($columns) {
     $new_columns = [];
 
     foreach ($columns as $key => $value) {
         $new_columns[$key] = $value;
 
-        // Insert custom columns after title
         if ($key === 'title') {
             $new_columns['countries'] = __('Countries', 'owbn-territory-manager');
             $new_columns['region']    = __('Region', 'owbn-territory-manager');
@@ -33,11 +22,9 @@ function owbn_tm_register_columns($columns)
     return $new_columns;
 }
 
-// ─── Populate Columns ────────────────────────────────────────────────────────
 add_action('manage_owbn_territory_posts_custom_column', 'owbn_tm_populate_columns', 10, 2);
 
-function owbn_tm_populate_columns($column, $post_id)
-{
+function owbn_tm_populate_columns($column, $post_id) {
     switch ($column) {
         case 'countries':
             $countries = get_post_meta($post_id, '_owbn_tm_countries', true);
@@ -80,11 +67,9 @@ function owbn_tm_populate_columns($column, $post_id)
     }
 }
 
-// ─── Make Columns Sortable (Optional) ────────────────────────────────────────
 add_filter('manage_edit-owbn_territory_sortable_columns', 'owbn_tm_sortable_columns');
 
-function owbn_tm_sortable_columns($columns)
-{
+function owbn_tm_sortable_columns($columns) {
     $columns['region']   = 'region';
     $columns['location'] = 'location';
     $columns['owner']    = 'owner';
@@ -93,8 +78,7 @@ function owbn_tm_sortable_columns($columns)
 
 add_action('pre_get_posts', 'owbn_tm_sort_columns');
 
-function owbn_tm_sort_columns($query)
-{
+function owbn_tm_sort_columns($query) {
     if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'owbn_territory') {
         return;
     }
@@ -117,11 +101,9 @@ function owbn_tm_sort_columns($query)
     }
 }
 
-// ─── Extend Search to Include Meta Fields ────────────────────────────────────
 add_action('pre_get_posts', 'owbn_tm_extend_search');
 
-function owbn_tm_extend_search($query)
-{
+function owbn_tm_extend_search($query) {
     if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'owbn_territory') {
         return;
     }
@@ -137,8 +119,7 @@ function owbn_tm_extend_search($query)
 
 add_filter('posts_where', 'owbn_tm_search_where', 10, 2);
 
-function owbn_tm_search_where($where, $query)
-{
+function owbn_tm_search_where($where, $query) {
     if (!is_admin() || !$query->is_main_query() || $query->get('post_type') !== 'owbn_territory') {
         return $where;
     }
@@ -164,11 +145,9 @@ function owbn_tm_search_where($where, $query)
     return $where;
 }
 
-// ─── Bulk Edit Support ───────────────────────────────────────────────────────
 add_action('bulk_edit_custom_box', 'owbn_tm_bulk_edit_custom_box', 10, 2);
 
-function owbn_tm_bulk_edit_custom_box($column_name, $post_type)
-{
+function owbn_tm_bulk_edit_custom_box($column_name, $post_type) {
     if ($post_type !== 'owbn_territory' || $column_name !== 'slugs') {
         return;
     }
@@ -198,8 +177,7 @@ function owbn_tm_bulk_edit_custom_box($column_name, $post_type)
 
 add_action('admin_footer-edit.php', 'owbn_tm_bulk_edit_js');
 
-function owbn_tm_bulk_edit_js()
-{
+function owbn_tm_bulk_edit_js() {
     global $post_type;
     if ($post_type !== 'owbn_territory') {
         return;
@@ -209,14 +187,12 @@ function owbn_tm_bulk_edit_js()
         jQuery(function($) {
             var select2Initialized = false;
 
-            // Initialize Select2 when bulk edit row appears
             $(document).ajaxComplete(function(event, xhr, settings) {
                 if (settings.data && settings.data.indexOf('action=inline-save') === -1) {
                     initBulkSelect2();
                 }
             });
 
-            // Also init on click
             $(document).on('click', '.editinline', function() {
                 setTimeout(initBulkSelect2, 200);
             });
@@ -234,7 +210,6 @@ function owbn_tm_bulk_edit_js()
                 }
             }
 
-            // Handle bulk edit save
             $(document).on('click', '#bulk_edit', function() {
                 var $bulk_row = $('#bulk-edit');
                 var $post_ids = $bulk_row.find('#bulk-titles-list .ntdelbutton').map(function() {
@@ -265,8 +240,7 @@ function owbn_tm_bulk_edit_js()
 
 add_action('wp_ajax_owbn_tm_bulk_edit_save', 'owbn_tm_bulk_edit_save');
 
-function owbn_tm_bulk_edit_save()
-{
+function owbn_tm_bulk_edit_save() {
     if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'owbn_tm_bulk_edit')) {
         wp_die();
     }

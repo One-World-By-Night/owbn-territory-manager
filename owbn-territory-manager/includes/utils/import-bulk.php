@@ -1,17 +1,5 @@
 <?php
-
-/** File: utils/import-bulk.php
- * Text Domain: owbn-territory-manager
- * Version: 1.1.0
- * @author greghacke
- * Function: Bulk import territories from CSV or JSON
- */
-
 defined('ABSPATH') || exit;
-
-/**
- * Map country name to ISO code(s).
- */
 function owbn_tm_map_country_to_iso(string $country): array
 {
     $country = trim($country);
@@ -20,14 +8,12 @@ function owbn_tm_map_country_to_iso(string $country): array
         return [];
     }
 
-    // Direct mappings for exact matches and common variations
     $direct_map = [
-        // Special codes
         'Worldwide'      => ['WW'],
         'World'          => ['WW'],
         'Global'         => ['WW'],
 
-        // Fictional/supernatural locations -> ZZ
+        // Fictional/supernatural locations
         'Aetherial Realm' => ['ZZ'],
         'Asia'            => ['ZZ'],
         'Bistritz'        => ['ZZ'],
@@ -40,7 +26,7 @@ function owbn_tm_map_country_to_iso(string $country): array
         'Umbra'           => ['ZZ'],
         'VM'              => ['ZZ'],
 
-        // US variations
+        // US
         'Florida'         => ['US'],
         'Palisades-Kepler State Park' => ['US'],
         'US'              => ['US'],
@@ -48,14 +34,14 @@ function owbn_tm_map_country_to_iso(string $country): array
         'United States'   => ['US'],
         'U.S.A.'          => ['US'],
 
-        // UK variations
+        // UK
         'England'         => ['GB'],
         'Scotland'        => ['GB'],
         'UK'              => ['GB'],
         'United Kingdom'  => ['GB'],
         'Wales'           => ['GB'],
 
-        // Standard country names
+        // Standard names
         'Afghanistan'          => ['AF'],
         'Argentina'            => ['AR'],
         'Australia'            => ['AU'],
@@ -132,12 +118,11 @@ function owbn_tm_map_country_to_iso(string $country): array
         'Vatican City'         => ['VA'],
     ];
 
-    // Check direct map first (case-sensitive)
     if (isset($direct_map[$country])) {
         return $direct_map[$country];
     }
 
-    // Check for multi-country (border territories)
+    // Border territories: "X & Y Border"
     if (preg_match('/^(.+?)\s*[&]\s*(.+?)\s+Border$/i', $country, $matches)) {
         $codes = [];
         $codes = array_merge($codes, owbn_tm_map_country_to_iso(trim($matches[1])));
@@ -145,7 +130,6 @@ function owbn_tm_map_country_to_iso(string $country): array
         return array_unique($codes);
     }
 
-    // Check for contains patterns
     $contains_map = [
         'Canada'   => ['CA'],
         'France'   => ['FR'],
@@ -161,7 +145,6 @@ function owbn_tm_map_country_to_iso(string $country): array
         }
     }
 
-    // Reverse lookup from country list (case-insensitive)
     $countries = owbn_tm_get_country_list();
     $country_lower = strtolower($country);
 
@@ -171,19 +154,10 @@ function owbn_tm_map_country_to_iso(string $country): array
         }
     }
 
-    // Default to configured unknown country code
     return [get_option('owbn_tm_import_unknown_country', 'ZZ')];
 }
 
-/**
- * Extract normalized fields from a row (CSV or JSON).
- *
- * @param array $row Raw row data
- * @return array Normalized fields
- */
-function owbn_tm_extract_row_fields(array $row): array
-{
-    // CSV column names
+function owbn_tm_extract_row_fields(array $row): array {
     $country     = $row['country'] ?? $row['Country'] ?? '';
     $region      = $row['region'] ?? $row['Region'] ?? '';
     $location    = $row['location'] ?? $row['Location'] ?? '';
@@ -194,7 +168,7 @@ function owbn_tm_extract_row_fields(array $row): array
     $update_date = $row['update_date'] ?? $row['UpdateDate'] ?? '';
     $update_user = $row['update_user'] ?? $row['UpdateUser'] ?? '';
 
-    // JSON column names (Drupal export format)
+    // Drupal export field names
     if (empty($region) && isset($row['State/Province'])) {
         $region = $row['State/Province'];
     }
@@ -230,16 +204,7 @@ function owbn_tm_extract_row_fields(array $row): array
     ];
 }
 
-/**
- * Process CSV or JSON import.
- *
- * @param string $file_path     Path to uploaded temp file
- * @param string $original_name Original filename for extension detection
- * @param bool   $dry_run       Validate without importing
- * @return array Results
- */
-function owbn_tm_process_import(string $file_path, string $original_name, bool $dry_run = false): array
-{
+function owbn_tm_process_import(string $file_path, string $original_name, bool $dry_run = false): array {
     $results = [
         'total'    => 0,
         'imported' => 0,
@@ -249,7 +214,6 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         'dry_run'  => $dry_run,
     ];
 
-    // Determine file type from original filename
     $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
 
     if (!in_array($ext, ['csv', 'json'], true)) {
@@ -260,7 +224,6 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         return $results;
     }
 
-    // Parse file based on type
     $rows = ($ext === 'json')
         ? owbn_tm_parse_json($file_path)
         : owbn_tm_parse_csv($file_path);
@@ -276,7 +239,6 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         $row_num = $index + 1;
         $row_issues = [];
 
-        // Extract and normalize fields
         $fields = owbn_tm_extract_row_fields($row);
 
         $country     = $fields['country'];
@@ -289,7 +251,6 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         $update_date = $fields['update_date'];
         $update_user = $fields['update_user'];
 
-        // Skip empty rows
         if (empty($country) && empty($region) && empty($location)) {
             $results['skipped']++;
             $results['warnings'][] = sprintf(
@@ -299,13 +260,11 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             continue;
         }
 
-        // Map country to ISO codes (default to configured default if empty)
         if (empty($country)) {
             $country_codes = [get_option('owbn_tm_import_default_country', 'US')];
         } else {
             $country_codes = owbn_tm_map_country_to_iso($country);
 
-            // Check for unknown country mapping
             if ($country_codes === ['ZZ']) {
                 $row_issues[] = sprintf(
                     __('Unknown country "%s" mapped to Custom/Other (ZZ)', 'owbn-territory-manager'),
@@ -314,8 +273,7 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             }
         }
 
-        // Generate title: Country - Region, Location
-        // For ZZ (fictional/custom), use original country name to preserve it
+        // ZZ: preserve original country name in title
         if ($country_codes === ['ZZ'] && !empty($country)) {
             $title = $country;
         } else {
@@ -335,13 +293,11 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             $title = "Territory Row {$row_num}";
         }
 
-        // Handle slug (could be comma-separated)
         $slugs = [];
         if (!empty($slug)) {
             $slugs = array_filter(array_map('trim', explode(',', $slug)));
         }
 
-        // Log row issues as warnings
         if (!empty($row_issues)) {
             $results['warnings'][] = sprintf(
                 __('Row %d: %s', 'owbn-territory-manager'),
@@ -350,13 +306,11 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             );
         }
 
-        // Dry run - don't insert, just validate
         if ($dry_run) {
             $results['imported']++;
             continue;
         }
 
-        // Create post
         $post_id = wp_insert_post([
             'post_type'    => 'owbn_territory',
             'post_status'  => 'publish',
@@ -373,7 +327,6 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             continue;
         }
 
-        // Save meta
         update_post_meta($post_id, '_owbn_tm_countries', $country_codes);
         update_post_meta($post_id, '_owbn_tm_region', sanitize_text_field($region));
         update_post_meta($post_id, '_owbn_tm_location', sanitize_text_field($location));
@@ -389,16 +342,8 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
     return $results;
 }
 
-/**
- * Parse JSON file (Drupal export format).
- *
- * Expected format: {"nodes":[{"node":{...}},{"node":{...}}]}
- *
- * @param string $file_path Path to JSON file
- * @return array Rows
- */
-function owbn_tm_parse_json(string $file_path): array
-{
+/** Expects {"nodes":[{"node":{...}}]} Drupal export format. */
+function owbn_tm_parse_json(string $file_path): array {
     $rows = [];
 
     $content = file_get_contents($file_path);
@@ -406,15 +351,12 @@ function owbn_tm_parse_json(string $file_path): array
         return $rows;
     }
 
-    // Remove UTF-8 BOM if present
     $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
 
     $data = json_decode($content, true);
     if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
         return $rows;
     }
-
-    // Handle {"nodes":[{"node":{...}}]} format
     if (isset($data['nodes']) && is_array($data['nodes'])) {
         foreach ($data['nodes'] as $item) {
             if (isset($item['node']) && is_array($item['node'])) {
@@ -426,27 +368,17 @@ function owbn_tm_parse_json(string $file_path): array
     return $rows;
 }
 
-/**
- * Parse CSV file.
- */
-function owbn_tm_parse_csv(string $file_path): array
-{
+function owbn_tm_parse_csv(string $file_path): array {
     $rows = [];
 
-    // Read entire file and remove BOM
     $content = file_get_contents($file_path);
     if ($content === false) {
         return $rows;
     }
 
-    // Remove UTF-8 BOM if present
     $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
-
-    // Normalize line endings
     $content = str_replace("\r\n", "\n", $content);
     $content = str_replace("\r", "\n", $content);
-
-    // Write to temp file for fgetcsv
     $temp = tmpfile();
     if ($temp === false) {
         return $rows;
@@ -461,7 +393,6 @@ function owbn_tm_parse_csv(string $file_path): array
         return $rows;
     }
 
-    // Normalize headers
     $headers = array_map('trim', $headers);
 
     while (($data = fgetcsv($temp)) !== false) {
@@ -474,14 +405,9 @@ function owbn_tm_parse_csv(string $file_path): array
     return $rows;
 }
 
-/**
- * Render import page.
- */
-function owbn_tm_render_import_page()
-{
+function owbn_tm_render_import_page() {
     $results = null;
 
-    // Handle form submission
     if (isset($_POST['owbn_tm_import']) && check_admin_referer('owbn_tm_import_nonce')) {
         if (!empty($_FILES['import_file']['tmp_name']) && !empty($_FILES['import_file']['name'])) {
             $dry_run = isset($_POST['dry_run']);

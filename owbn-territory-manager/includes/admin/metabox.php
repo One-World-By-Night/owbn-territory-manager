@@ -1,18 +1,9 @@
 <?php
-
-/** File: admin/metabox.php
- * Text Domain: owbn-territory-manager
- * Version: 1.1.0
- * @author greghacke
- * Function: Territory metabox for CPT editor
- */
-
 defined('ABSPATH') || exit;
 
 add_action('add_meta_boxes', 'owbn_tm_add_metaboxes');
 
-function owbn_tm_add_metaboxes()
-{
+function owbn_tm_add_metaboxes() {
     add_meta_box(
         'owbn_tm_territory_details',
         __('Territory Details', 'owbn-territory-manager'),
@@ -23,8 +14,7 @@ function owbn_tm_add_metaboxes()
     );
 }
 
-function owbn_tm_render_metabox($post)
-{
+function owbn_tm_render_metabox($post) {
     wp_nonce_field('owbn_tm_save_metabox', 'owbn_tm_metabox_nonce');
 
     $countries = get_post_meta($post->ID, '_owbn_tm_countries', true) ?: [];
@@ -34,7 +24,6 @@ function owbn_tm_render_metabox($post)
     $owner     = get_post_meta($post->ID, '_owbn_tm_owner', true) ?: '';
     $slugs     = get_post_meta($post->ID, '_owbn_tm_slug', true) ?: [];
 
-    // Handle legacy single value
     if (!is_array($slugs)) {
         $slugs = !empty($slugs) ? [$slugs] : [];
     }
@@ -44,7 +33,6 @@ function owbn_tm_render_metabox($post)
 ?>
     <div class="owbn-tm-metabox">
         <table class="form-table">
-            <!-- Countries (multi-select) -->
             <tr>
                 <th scope="row">
                     <label for="owbn_tm_countries"><?php esc_html_e('Countries', 'owbn-territory-manager'); ?></label>
@@ -60,8 +48,6 @@ function owbn_tm_render_metabox($post)
                     <p class="description"><?php esc_html_e('Select one or more countries. Use Worldwide for global territories.', 'owbn-territory-manager'); ?></p>
                 </td>
             </tr>
-
-            <!-- Region -->
             <tr>
                 <th scope="row">
                     <label for="owbn_tm_region"><?php esc_html_e('Region', 'owbn-territory-manager'); ?></label>
@@ -72,8 +58,6 @@ function owbn_tm_render_metabox($post)
                     <p class="description"><?php esc_html_e('State, province, or regional area.', 'owbn-territory-manager'); ?></p>
                 </td>
             </tr>
-
-            <!-- Location -->
             <tr>
                 <th scope="row">
                     <label for="owbn_tm_location"><?php esc_html_e('Location', 'owbn-territory-manager'); ?></label>
@@ -84,8 +68,6 @@ function owbn_tm_render_metabox($post)
                     <p class="description"><?php esc_html_e('City, county, or specific location name.', 'owbn-territory-manager'); ?></p>
                 </td>
             </tr>
-
-            <!-- Detail -->
             <tr>
                 <th scope="row">
                     <label for="owbn_tm_detail"><?php esc_html_e('Detail', 'owbn-territory-manager'); ?></label>
@@ -96,8 +78,6 @@ function owbn_tm_render_metabox($post)
                     <p class="description"><?php esc_html_e('Additional location detail (building, landmark, etc.).', 'owbn-territory-manager'); ?></p>
                 </td>
             </tr>
-
-            <!-- Owner -->
             <tr>
                 <th scope="row">
                     <label for="owbn_tm_owner"><?php esc_html_e('Owner', 'owbn-territory-manager'); ?></label>
@@ -108,8 +88,6 @@ function owbn_tm_render_metabox($post)
                     <p class="description"><?php esc_html_e('Display name of the owner (Coordinator or Chronicle name).', 'owbn-territory-manager'); ?></p>
                 </td>
             </tr>
-
-            <!-- Slugs (multi-select, linked to CC data) -->
             <tr>
                 <th scope="row">
                     <label for="owbn_tm_slug"><?php esc_html_e('Linked Slugs', 'owbn-territory-manager'); ?></label>
@@ -148,9 +126,7 @@ function owbn_tm_render_metabox($post)
 
 add_action('save_post_owbn_territory', 'owbn_tm_save_metabox', 10, 2);
 
-function owbn_tm_save_metabox($post_id, $post)
-{
-    // Verify nonce
+function owbn_tm_save_metabox($post_id, $post) {
     if (
         !isset($_POST['owbn_tm_metabox_nonce']) ||
         !wp_verify_nonce($_POST['owbn_tm_metabox_nonce'], 'owbn_tm_save_metabox')
@@ -158,23 +134,19 @@ function owbn_tm_save_metabox($post_id, $post)
         return;
     }
 
-    // Check autosave
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
         return;
     }
 
-    // Check permissions
     if (!current_user_can('edit_post', $post_id)) {
         return;
     }
 
-    // Countries (array)
     $countries = isset($_POST['owbn_tm_countries']) && is_array($_POST['owbn_tm_countries'])
         ? array_map('sanitize_text_field', $_POST['owbn_tm_countries'])
         : [];
     update_post_meta($post_id, '_owbn_tm_countries', $countries);
 
-    // Text fields
     $text_fields = ['region', 'location', 'detail', 'owner'];
     foreach ($text_fields as $field) {
         $key   = '_owbn_tm_' . $field;
@@ -184,7 +156,6 @@ function owbn_tm_save_metabox($post_id, $post)
         update_post_meta($post_id, $key, $value);
     }
 
-    // Slugs (array)
     if (isset($_POST['owbn_tm_slug']) && is_array($_POST['owbn_tm_slug'])) {
         $slugs = array_map('sanitize_text_field', $_POST['owbn_tm_slug']);
     } elseif (isset($_POST['owbn_tm_slug_text'])) {
@@ -194,7 +165,6 @@ function owbn_tm_save_metabox($post_id, $post)
     }
     update_post_meta($post_id, '_owbn_tm_slug', $slugs);
 
-    // Auto-generate title if empty
     if (empty($post->post_title) || $post->post_title === __('Auto Draft')) {
         $title_parts = array_filter([
             owbn_tm_format_countries($countries),
