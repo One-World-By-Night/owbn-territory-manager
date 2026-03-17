@@ -22,7 +22,7 @@ function owbn_tm_refresh_cc_cache() {
     return true;
 }
 
-/** @return array ['slug' => 'Label (type)'] */
+/** @return array ['chronicle/{slug}' => 'Label (Chronicle)', 'coordinator/{slug}' => 'Label (Coordinator)'] */
 function owbn_tm_get_all_slugs(): array {
     $slugs = [];
 
@@ -32,7 +32,8 @@ function owbn_tm_get_all_slugs(): array {
             $slug = $c['slug'] ?? '';
             $name = $c['title'] ?? $c['name'] ?? $slug;
             if ($slug) {
-                $slugs[$slug] = $slug . ' – ' . $name . ' (Chronicle)';
+                $key = 'chronicle/' . $slug;
+                $slugs[$key] = $key . ' – ' . $name . ' (Chronicle)';
             }
         }
     }
@@ -43,7 +44,8 @@ function owbn_tm_get_all_slugs(): array {
             $slug = $c['slug'] ?? '';
             $name = $c['title'] ?? $c['name'] ?? $slug;
             if ($slug) {
-                $slugs[$slug] = $slug . ' – ' . $name . ' (Coordinator)';
+                $key = 'coordinator/' . $slug;
+                $slugs[$key] = $key . ' – ' . $name . ' (Coordinator)';
             }
         }
     }
