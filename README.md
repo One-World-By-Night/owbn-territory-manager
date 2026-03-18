@@ -2,7 +2,7 @@
 
 Manage chronicle and coordinator territory assignments with admin tools and bulk import.
 
-**Version:** 1.5.0
+**Version:** 1.6.0
 **Requires:** WordPress 5.8+ / PHP 7.4+
 **License:** GPL-2.0-or-later
 
@@ -15,22 +15,37 @@ Manage chronicle and coordinator territory assignments with admin tools and bulk
 
 ## Changelog
 
+### 1.6.0
+
+- Added metadata change history tracking for countries, region, location, detail, owner, and linked slugs
+- History stored per territory (up to 50 entries), showing timestamp, editor, and before/after values
+- Read-only Change History metabox added to territory edit sidebar
+
+### 1.5.1
+
+- Territory slug format changed to typed slugs: `chronicle/{slug}` and `coordinator/{slug}`
+
 ### 1.5.0
+
 - Removed dead webhooks/ directory (REST API removed in 1.3.0)
 - Stripped comment bloat and redundant PHPDoc
 - Updated stale documentation
 
 ### 1.4.0
+
 - Settings page reworked for import defaults
 - Integrated with OWBN Client API Gateway
 
 ### 1.3.0
+
 - Removed custom REST API endpoints (territory data now served via OWBN Client gateway)
 - Added chronicle/coordinator data bridge via OWBN Client
 
 ### 1.2.0
+
 - Removed unused stub files
 - Scoped Select2 loading to territory admin pages
 
 ### 1.1.0
+
 - Initial release
