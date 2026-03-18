@@ -2,7 +2,7 @@
 
 Manage chronicle and coordinator territory assignments with admin tools and bulk import.
 
-**Version:** 1.6.1
+**Version:** 1.6.2
 **Requires:** WordPress 5.8+ / PHP 7.4+
 **License:** GPL-2.0-or-later
 
@@ -14,6 +14,11 @@ Manage chronicle and coordinator territory assignments with admin tools and bulk
 4. Import data via **OWBN Territory > Import** or add manually
 
 ## Changelog
+
+### 1.6.2
+
+- Normalize plain slugs to typed slugs (`chronicle/` or `coordinator/`) on render and save
+- Fixes Select2 pre-selection for territories imported before typed slug format was introduced
 
 ### 1.6.1
 

@@ -3,7 +3,7 @@
 /**
  * Plugin Name: OWBN Territory Manager
  * Description: Manage chronicle and coordinator territory assignments with admin tools and bulk import.
- * Version: 1.6.1
+ * Version: 1.6.2
  * Author: greghacke
  * Author URI: https://www.owbn.net
  * Text Domain: owbn-territory-manager
@@ -16,7 +16,7 @@
 
 defined('ABSPATH') || exit;
 
-define('OWBN_TM_VERSION', '1.6.1');
+define('OWBN_TM_VERSION', '1.6.2');
 define('OWBN_TM_PLUGIN_FILE', __FILE__);
 define('OWBN_TM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('OWBN_TM_PLUGIN_URL', plugin_dir_url(__FILE__));

@@ -1,6 +1,31 @@
 <?php
 defined('ABSPATH') || exit;
 
+/**
+ * Normalize plain slugs (e.g. 'mddm') to typed slugs ('chronicle/mddm' or 'coordinator/mddm').
+ * Leaves already-typed slugs unchanged. Unknown plain slugs are kept as-is.
+ */
+function owbn_tm_normalize_slugs(array $slugs, array $all_slugs): array {
+    $typed_keys = array_keys($all_slugs);
+    $result = [];
+    foreach ($slugs as $slug) {
+        if (strpos($slug, '/') !== false) {
+            $result[] = $slug;
+        } else {
+            $as_chronicle   = 'chronicle/' . $slug;
+            $as_coordinator = 'coordinator/' . $slug;
+            if (in_array($as_chronicle, $typed_keys, true)) {
+                $result[] = $as_chronicle;
+            } elseif (in_array($as_coordinator, $typed_keys, true)) {
+                $result[] = $as_coordinator;
+            } else {
+                $result[] = $slug;
+            }
+        }
+    }
+    return array_values(array_unique($result));
+}
+
 add_action('add_meta_boxes', 'owbn_tm_add_metaboxes');
 
 function owbn_tm_add_metaboxes() {
@@ -30,6 +55,9 @@ function owbn_tm_render_metabox($post) {
 
     $country_list = owbn_tm_get_country_list();
     $all_slugs    = owbn_tm_get_all_slugs();
+
+    // Normalize any plain slugs (e.g. 'mddm') to typed slugs ('chronicle/mddm')
+    $slugs = owbn_tm_normalize_slugs($slugs, $all_slugs);
 ?>
     <div class="owbn-tm-metabox">
         <table class="form-table">
@@ -163,6 +191,7 @@ function owbn_tm_save_metabox($post_id, $post) {
     } else {
         $slugs = [];
     }
+    $slugs = owbn_tm_normalize_slugs($slugs, owbn_tm_get_all_slugs());
     update_post_meta($post_id, '_owbn_tm_slug', $slugs);
 
     if (empty($post->post_title) || $post->post_title === __('Auto Draft')) {
