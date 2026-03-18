@@ -2,7 +2,7 @@
 
 Manage chronicle and coordinator territory assignments with admin tools and bulk import.
 
-**Version:** 1.6.0
+**Version:** 1.6.1
 **Requires:** WordPress 5.8+ / PHP 7.4+
 **License:** GPL-2.0-or-later
 
@@ -14,6 +14,12 @@ Manage chronicle and coordinator territory assignments with admin tools and bulk
 4. Import data via **OWBN Territory > Import** or add manually
 
 ## Changelog
+
+### 1.6.1
+
+- Added custom country/location management in Settings (add game-specific entries like Virtual, Online, Umbra)
+- Custom entries appear in all country dropdowns alongside the standard ISO list
+- Entries stored as a WordPress option, manageable without code changes
 
 ### 1.6.0
 

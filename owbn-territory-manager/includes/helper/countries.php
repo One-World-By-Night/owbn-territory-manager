@@ -7,11 +7,24 @@ function owbn_tm_get_country_list(): array {
         'ZZ' => 'Custom/Other',
     ];
 
-    if (function_exists('owbn_get_country_list')) {
-        return $special + owbn_get_country_list();
+    // Merge admin-managed custom entries (e.g. Virtual, Online)
+    $custom_raw = get_option('owbn_tm_custom_countries', []);
+    $custom = [];
+    if (is_array($custom_raw)) {
+        foreach ($custom_raw as $entry) {
+            $code = strtoupper(trim($entry['code'] ?? ''));
+            $name = trim($entry['name'] ?? '');
+            if ($code !== '' && $name !== '') {
+                $custom[$code] = $name;
+            }
+        }
     }
 
-    return $special + [
+    if (function_exists('owbn_get_country_list')) {
+        return $special + $custom + owbn_get_country_list();
+    }
+
+    return $special + $custom + [
         'AF' => 'Afghanistan',
         'AL' => 'Albania',
         'DZ' => 'Algeria',
