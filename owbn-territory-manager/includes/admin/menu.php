@@ -25,8 +25,8 @@ function owbn_tm_register_admin_menu() {
 
     add_submenu_page(
         'owbn-territory',
-        __('Import', 'owbn-territory-manager'),
-        __('Import', 'owbn-territory-manager'),
+        __('Import / Export', 'owbn-territory-manager'),
+        __('Import / Export', 'owbn-territory-manager'),
         'manage_options',
         'owbn-territory-import',
         'owbn_tm_render_import_page'

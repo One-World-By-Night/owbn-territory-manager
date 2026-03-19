@@ -418,7 +418,7 @@ function owbn_tm_render_import_page() {
 
 ?>
     <div class="wrap">
-        <h1><?php esc_html_e('Import Territories', 'owbn-territory-manager'); ?></h1>
+        <h1><?php esc_html_e('Import / Export Territories', 'owbn-territory-manager'); ?></h1>
 
         <?php if ($results) : ?>
             <?php
@@ -583,6 +583,159 @@ function owbn_tm_render_import_page() {
                 </tr>
             </tbody>
         </table>
+
+        <hr>
+
+        <h2><?php esc_html_e('Export Territories', 'owbn-territory-manager'); ?></h2>
+
+        <form method="post">
+            <?php wp_nonce_field('owbn_tm_export_nonce'); ?>
+
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="export_slugs"><?php esc_html_e('Filter by Slug(s)', 'owbn-territory-manager'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text" name="export_slugs" id="export_slugs" class="regular-text"
+                            placeholder="coordinator/assamite,chronicle/mckn" />
+                        <p class="description">
+                            <?php esc_html_e('Comma-separated slugs. Leave empty and click Export All for everything.', 'owbn-territory-manager'); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <p class="submit">
+                <button type="submit" name="owbn_tm_export_all" class="button button-primary">
+                    <?php esc_html_e('Export All', 'owbn-territory-manager'); ?>
+                </button>
+                <button type="submit" name="owbn_tm_export_slugs" class="button button-secondary">
+                    <?php esc_html_e('Export Slug(s)', 'owbn-territory-manager'); ?>
+                </button>
+            </p>
+        </form>
     </div>
 <?php
+}
+
+/**
+ * Handle CSV export via admin_init (before headers are sent).
+ */
+add_action('admin_init', 'owbn_tm_handle_export');
+function owbn_tm_handle_export() {
+    if (!isset($_POST['owbn_tm_export_all']) && !isset($_POST['owbn_tm_export_slugs'])) {
+        return;
+    }
+    if (!check_admin_referer('owbn_tm_export_nonce')) {
+        return;
+    }
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    $filter_slugs = [];
+    if (isset($_POST['owbn_tm_export_slugs'])) {
+        $raw = sanitize_text_field(wp_unslash($_POST['export_slugs'] ?? ''));
+        $filter_slugs = array_filter(array_map('trim', explode(',', $raw)));
+        if (empty($filter_slugs)) {
+            return; // No slugs entered with slug button
+        }
+    }
+
+    $args = [
+        'post_type'      => 'owbn_territory',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'orderby'        => 'title',
+        'order'          => 'ASC',
+    ];
+
+    $posts = get_posts($args);
+
+    $countries_list = owbn_tm_get_country_list();
+
+    $rows = [];
+    foreach ($posts as $post) {
+        $country_codes = get_post_meta($post->ID, '_owbn_tm_countries', true) ?: [];
+        $region        = get_post_meta($post->ID, '_owbn_tm_region', true) ?: '';
+        $location      = get_post_meta($post->ID, '_owbn_tm_location', true) ?: '';
+        $detail        = get_post_meta($post->ID, '_owbn_tm_detail', true) ?: '';
+        $description   = $post->post_content;
+        $owner         = get_post_meta($post->ID, '_owbn_tm_owner', true) ?: '';
+        $slugs         = get_post_meta($post->ID, '_owbn_tm_slug', true) ?: [];
+        $update_date   = get_post_meta($post->ID, '_owbn_tm_update_date', true) ?: '';
+        $update_user   = get_post_meta($post->ID, '_owbn_tm_update_user', true) ?: '';
+
+        if (!is_array($slugs)) $slugs = [];
+        $slug_str = implode(',', $slugs);
+
+        // Filter by slugs if specified
+        if (!empty($filter_slugs)) {
+            $matched = false;
+            foreach ($filter_slugs as $fs) {
+                foreach ($slugs as $s) {
+                    if ($s === $fs) {
+                        $matched = true;
+                        break 2;
+                    }
+                }
+            }
+            if (!$matched) continue;
+        }
+
+        // Resolve country codes to names
+        $country_names = [];
+        foreach ($country_codes as $code) {
+            $country_names[] = $countries_list[$code] ?? $code;
+        }
+        $country = implode(', ', $country_names);
+
+        $rows[] = [
+            'Country'    => $country,
+            'Region'     => $region,
+            'Location'   => $location,
+            'Detail'     => $detail,
+            'Description'=> wp_strip_all_tags($description),
+            'Owner'      => $owner,
+            'Slug'       => $slug_str,
+            'UpdateDate' => $update_date,
+            'UpdateUser' => $update_user,
+        ];
+    }
+
+    // Generate CSV with all fields quoted
+    $filename = 'territories-export-' . gmdate('Y-m-d') . '.csv';
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $output = fopen('php://output', 'w');
+
+    // BOM for Excel UTF-8
+    fwrite($output, "\xEF\xBB\xBF");
+
+    // Header row
+    $headers = ['Country', 'Region', 'Location', 'Detail', 'Description', 'Owner', 'Slug', 'UpdateDate', 'UpdateUser'];
+    owbn_tm_fputcsv_quoted($output, $headers);
+
+    foreach ($rows as $row) {
+        owbn_tm_fputcsv_quoted($output, array_values($row));
+    }
+
+    fclose($output);
+    exit;
+}
+
+/**
+ * Write a CSV row with all fields quoted.
+ */
+function owbn_tm_fputcsv_quoted($handle, array $fields) {
+    $line = implode(',', array_map(function ($field) {
+        $escaped = str_replace('"', '""', $field);
+        return '"' . $escaped . '"';
+    }, $fields));
+    fwrite($handle, $line . "\n");
 }
