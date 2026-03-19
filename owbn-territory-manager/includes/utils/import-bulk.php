@@ -598,9 +598,9 @@ function owbn_tm_render_import_page() {
                     </th>
                     <td>
                         <input type="text" name="export_slugs" id="export_slugs" class="regular-text"
-                            placeholder="coordinator/assamite,chronicle/mckn" />
+                            placeholder="coordinator/**,chronicle/mckn" />
                         <p class="description">
-                            <?php esc_html_e('Comma-separated slugs. Leave empty and click Export All for everything.', 'owbn-territory-manager'); ?>
+                            <?php esc_html_e('Comma-separated slugs. Use /** for wildcards (e.g. coordinator/**). Leave empty and click Export All for everything.', 'owbn-territory-manager'); ?>
                         </p>
                     </td>
                 </tr>
@@ -670,7 +670,7 @@ function owbn_tm_handle_export() {
         if (!is_array($slugs)) $slugs = [];
         $slug_str = implode(',', $slugs);
 
-        // Filter by slugs if specified
+        // Filter by slugs if specified (supports wildcards like coordinator/**)
         if (!empty($filter_slugs)) {
             $matched = false;
             foreach ($filter_slugs as $fs) {
@@ -678,6 +678,14 @@ function owbn_tm_handle_export() {
                     if ($s === $fs) {
                         $matched = true;
                         break 2;
+                    }
+                    // Wildcard: coordinator/** matches coordinator/assamite, etc.
+                    if (str_ends_with($fs, '/**')) {
+                        $prefix = substr($fs, 0, -2); // "coordinator/"
+                        if (strpos($s, $prefix) === 0) {
+                            $matched = true;
+                            break 2;
+                        }
                     }
                 }
             }
