@@ -298,6 +298,15 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             $slugs = array_filter(array_map('trim', explode(',', $slug)));
         }
 
+        // Auto-populate UpdateDate/UpdateUser when blank.
+        if (empty($update_date)) {
+            $update_date = current_time('Y-m-d');
+        }
+        if (empty($update_user)) {
+            $current_user = wp_get_current_user();
+            $update_user  = $current_user->display_name ?: $current_user->user_login;
+        }
+
         if (!empty($row_issues)) {
             $results['warnings'][] = sprintf(
                 __('Row %d: %s', 'owbn-territory-manager'),
