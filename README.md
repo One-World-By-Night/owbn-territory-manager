@@ -1,62 +1,28 @@
 # OWBN Territory Manager
 
-Manage chronicle and coordinator territory assignments with admin tools and bulk import.
+Manages geographic territory assignments for OWBN chronicles and coordinators.
 
-**Version:** 1.6.2
-**Requires:** WordPress 5.8+ / PHP 7.4+
-**License:** GPL-2.0-or-later
+**Version:** 1.8.1
+**Deployed to:** chronicles.owbn.net
 
-## Installation
+## What It Does
 
-1. Upload `owbn-territory-manager` to `/wp-content/plugins/`
-2. Activate via Plugins menu
-3. Configure under **OWBN Territory > Settings**
-4. Import data via **OWBN Territory > Import** or add manually
+Every OWBN chronicle and coordinator genre has a geographic territory — the real-world regions where they operate. This plugin stores those assignments and provides admin tools for managing them.
 
-## Changelog
+Key features:
 
-### 1.6.2
+- **Territory records** — custom post type with country, region, location, detail fields, and linked chronicle/coordinator slugs
+- **Bulk import** — CSV import with configurable defaults for fast initial population
+- **Change history** — tracks who changed what and when on each territory (up to 50 entries per record)
+- **Custom locations** — admin-configurable country/location entries (Virtual, Online, etc.) alongside the standard ISO list
+- **Dashboard widget** — quick links and last 5 updated territories
+- **Data served via owbn-gateway** — no custom REST endpoints; territory data flows through the OWBN Client gateway to other sites
 
-- Normalize plain slugs to typed slugs (`chronicle/` or `coordinator/`) on render and save
-- Fixes Select2 pre-selection for territories imported before typed slug format was introduced
+## Requirements
 
-### 1.6.1
+- WordPress 5.8+, PHP 7.4+
+- owbn-core + owbn-gateway for cross-site data access
 
-- Added custom country/location management in Settings (add game-specific entries like Virtual, Online, Umbra)
-- Custom entries appear in all country dropdowns alongside the standard ISO list
-- Entries stored as a WordPress option, manageable without code changes
+## License
 
-### 1.6.0
-
-- Added metadata change history tracking for countries, region, location, detail, owner, and linked slugs
-- History stored per territory (up to 50 entries), showing timestamp, editor, and before/after values
-- Read-only Change History metabox added to territory edit sidebar
-
-### 1.5.1
-
-- Territory slug format changed to typed slugs: `chronicle/{slug}` and `coordinator/{slug}`
-
-### 1.5.0
-
-- Removed dead webhooks/ directory (REST API removed in 1.3.0)
-- Stripped comment bloat and redundant PHPDoc
-- Updated stale documentation
-
-### 1.4.0
-
-- Settings page reworked for import defaults
-- Integrated with OWBN Client API Gateway
-
-### 1.3.0
-
-- Removed custom REST API endpoints (territory data now served via OWBN Client gateway)
-- Added chronicle/coordinator data bridge via OWBN Client
-
-### 1.2.0
-
-- Removed unused stub files
-- Scoped Select2 loading to territory admin pages
-
-### 1.1.0
-
-- Initial release
+GPL-2.0-or-later
