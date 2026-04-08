@@ -204,10 +204,53 @@ function owbn_tm_extract_row_fields(array $row): array {
     ];
 }
 
-function owbn_tm_process_import(string $file_path, string $original_name, bool $dry_run = false): array {
+/**
+ * Find an existing territory matching the natural key (country codes + region + location + detail).
+ * Returns the post ID if found, null otherwise. If multiple match, returns the first and the caller should warn.
+ */
+function owbn_tm_find_existing_territory(array $country_codes, string $region, string $location, string $detail): ?int {
+    $query = new WP_Query([
+        'post_type'      => 'owbn_territory',
+        'post_status'    => 'any',
+        'posts_per_page' => 2,
+        'fields'         => 'ids',
+        'no_found_rows'  => true,
+        'meta_query'     => [
+            'relation' => 'AND',
+            [ 'key' => '_owbn_tm_region',   'value' => $region,   'compare' => '=' ],
+            [ 'key' => '_owbn_tm_location', 'value' => $location, 'compare' => '=' ],
+            [ 'key' => '_owbn_tm_detail',   'value' => $detail,   'compare' => '=' ],
+        ],
+    ]);
+
+    if (empty($query->posts)) {
+        return null;
+    }
+
+    // Country codes are stored as a serialized array — meta_query can't compare arrays reliably,
+    // so we filter the candidates in PHP.
+    sort($country_codes);
+    foreach ($query->posts as $post_id) {
+        $stored = get_post_meta($post_id, '_owbn_tm_countries', true) ?: [];
+        if (!is_array($stored)) {
+            continue;
+        }
+        sort($stored);
+        if ($stored === $country_codes) {
+            return (int) $post_id;
+        }
+    }
+
+    return null;
+}
+
+function owbn_tm_process_import(string $file_path, string $original_name, bool $dry_run = false, string $slug_mode = 'merge'): array {
+    $slug_mode = in_array($slug_mode, ['merge', 'replace'], true) ? $slug_mode : 'merge';
+
     $results = [
         'total'    => 0,
         'imported' => 0,
+        'updated'  => 0,
         'skipped'  => 0,
         'errors'   => [],
         'warnings' => [],
@@ -315,25 +358,64 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
             );
         }
 
+        $existing_id = owbn_tm_find_existing_territory($country_codes, $region, $location, $detail);
+
         if ($dry_run) {
-            $results['imported']++;
+            if ($existing_id) {
+                $results['updated']++;
+            } else {
+                $results['imported']++;
+            }
             continue;
         }
 
-        $post_id = wp_insert_post([
-            'post_type'    => 'owbn_territory',
-            'post_status'  => 'publish',
-            'post_title'   => sanitize_text_field($title),
-            'post_content' => wp_kses_post($description),
-        ], true);
+        if ($existing_id) {
+            $update_result = wp_update_post([
+                'ID'           => $existing_id,
+                'post_title'   => sanitize_text_field($title),
+                'post_content' => wp_kses_post($description),
+            ], true);
 
-        if (is_wp_error($post_id)) {
-            $results['errors'][] = sprintf(
-                __('Row %d: Failed to create post - %s', 'owbn-territory-manager'),
-                $row_num,
-                $post_id->get_error_message()
-            );
-            continue;
+            if (is_wp_error($update_result)) {
+                $results['errors'][] = sprintf(
+                    __('Row %d: Failed to update post %d - %s', 'owbn-territory-manager'),
+                    $row_num,
+                    $existing_id,
+                    $update_result->get_error_message()
+                );
+                continue;
+            }
+
+            $post_id = $existing_id;
+
+            // Slug merge/replace
+            if ($slug_mode === 'merge') {
+                $existing_slugs = get_post_meta($post_id, '_owbn_tm_slug', true) ?: [];
+                if (!is_array($existing_slugs)) {
+                    $existing_slugs = [];
+                }
+                $slugs = array_values(array_unique(array_merge($existing_slugs, $slugs)));
+            }
+
+            $is_update = true;
+        } else {
+            $post_id = wp_insert_post([
+                'post_type'    => 'owbn_territory',
+                'post_status'  => 'publish',
+                'post_title'   => sanitize_text_field($title),
+                'post_content' => wp_kses_post($description),
+            ], true);
+
+            if (is_wp_error($post_id)) {
+                $results['errors'][] = sprintf(
+                    __('Row %d: Failed to create post - %s', 'owbn-territory-manager'),
+                    $row_num,
+                    $post_id->get_error_message()
+                );
+                continue;
+            }
+
+            $is_update = false;
         }
 
         update_post_meta($post_id, '_owbn_tm_countries', $country_codes);
@@ -345,7 +427,11 @@ function owbn_tm_process_import(string $file_path, string $original_name, bool $
         update_post_meta($post_id, '_owbn_tm_update_date', sanitize_text_field($update_date));
         update_post_meta($post_id, '_owbn_tm_update_user', sanitize_text_field($update_user));
 
-        $results['imported']++;
+        if ($is_update) {
+            $results['updated']++;
+        } else {
+            $results['imported']++;
+        }
     }
 
     return $results;
@@ -420,8 +506,9 @@ function owbn_tm_render_import_page() {
     if (isset($_POST['owbn_tm_import']) && check_admin_referer('owbn_tm_import_nonce')) {
         if (!empty($_FILES['import_file']['tmp_name']) && !empty($_FILES['import_file']['name'])) {
             $dry_run = isset($_POST['dry_run']);
+            $slug_mode = isset($_POST['slug_mode']) && $_POST['slug_mode'] === 'replace' ? 'replace' : 'merge';
             $original_name = sanitize_file_name($_FILES['import_file']['name']);
-            $results = owbn_tm_process_import($_FILES['import_file']['tmp_name'], $original_name, $dry_run);
+            $results = owbn_tm_process_import($_FILES['import_file']['tmp_name'], $original_name, $dry_run, $slug_mode);
         }
     }
 
@@ -443,9 +530,10 @@ function owbn_tm_render_import_page() {
                         <strong><?php esc_html_e('Import Complete:', 'owbn-territory-manager'); ?></strong><br>
                     <?php endif; ?>
                     <?php printf(
-                        esc_html__('Total: %d | Imported: %d | Skipped: %d | Errors: %d | Warnings: %d', 'owbn-territory-manager'),
+                        esc_html__('Total: %d | Created: %d | Updated: %d | Skipped: %d | Errors: %d | Warnings: %d', 'owbn-territory-manager'),
                         $results['total'],
                         $results['imported'],
+                        $results['updated'] ?? 0,
                         $results['skipped'],
                         count($results['errors']),
                         count($results['warnings'])
@@ -494,6 +582,22 @@ function owbn_tm_render_import_page() {
                         <p class="description">
                             <?php esc_html_e('CSV columns: Country, Region, Location, Detail, Description, Owner, Slug, UpdateDate, UpdateUser', 'owbn-territory-manager'); ?><br>
                             <?php esc_html_e('JSON format: {"nodes":[{"node":{...}}]} with Drupal export fields', 'owbn-territory-manager'); ?>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Slug behavior on update', 'owbn-territory-manager'); ?></th>
+                    <td>
+                        <label style="display:block;margin-bottom:4px;">
+                            <input type="radio" name="slug_mode" value="merge" checked />
+                            <?php esc_html_e('Merge slugs with existing (default)', 'owbn-territory-manager'); ?>
+                        </label>
+                        <label style="display:block;">
+                            <input type="radio" name="slug_mode" value="replace" />
+                            <?php esc_html_e('Replace slugs entirely', 'owbn-territory-manager'); ?>
+                        </label>
+                        <p class="description">
+                            <?php esc_html_e('When a row matches an existing territory (same country, region, location, detail), this controls how slugs are handled. Only applies to updates, not new rows.', 'owbn-territory-manager'); ?>
                         </p>
                     </td>
                 </tr>
